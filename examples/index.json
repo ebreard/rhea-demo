@@ -10,6 +10,16 @@
   "set": "showcase"
  },
  {
+  "index": 524,
+  "id": "Fuego_click_dilatancy",
+  "dir": "./examples/Fuego_click_dilatancy/",
+  "title": "Fuego (Guatemala), click-to-erupt pulses with dilatancy (self-fluidising)",
+  "solver": "pdc",
+  "listed": true,
+  "menu": 58.5,
+  "set": "showcase"
+ },
+ {
   "index": 294,
   "id": "Nepal_Langtang_click",
   "dir": "./examples/Nepal_Langtang_click/",
