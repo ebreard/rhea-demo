@@ -82,7 +82,7 @@
  "slide_curvature": 1,
  "slide_click_pulse": 1,
  "dil_adapt_dt": 0,
- "slide_pore_litho_cap": 0,
+ "slide_pore_litho_cap": 1,
  "slide_dilatancy": 1,
  "slide_pore_pin": 1,
  "bathy_flatten_edges": 0,

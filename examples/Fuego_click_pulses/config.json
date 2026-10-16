@@ -79,6 +79,6 @@
  "land_cmap_max": 4000.0,
  "dil_adapt_dt": 0,
  "slide_dilatancy": 0,
- "slide_pore_litho_cap": 0,
+ "slide_pore_litho_cap": 1,
  "data_dir": "./examples/Fuego_pile_small/"
 }
