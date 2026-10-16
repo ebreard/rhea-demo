@@ -1,0 +1,12 @@
+name,pop,year,source,lon,lat,x,y,kind
+Rasuwagadhi border crossing,,,,85.37778,28.27972,340901,3129256,gauge
+Dhunche,2744,2011,Nepal census,85.29778,28.11167,332793,3110743,
+Syabrubesi,2271,2011,Nepal census,85.3363,28.1635,336656,3116434,
+Briddim,722,1991,Nepal census,85.34,28.19,337059,3119365,
+Timure,562,1991,Nepal census,85.366481,28.253742,339754,3126393,
+Langtang,468,1991,Nepal census,85.50611,28.21639,353402,3122077,
+Guoba 郭巴村,180,2026,people evacuated Aug 2026,85.45657,28.36552,348751,3138662,
+Labi 拉比村,107,2026,people evacuated Aug 2026,85.4025572,28.320307,343391,3133721,
+Seqiong 色琼村,40,2026,people evacuated Aug 2026,85.4291274,28.3385054,346023,3135703,
+Zhangang 占岗村,,,position from OpenStreetMap,85.43953,28.36093,347075,3138175,
+Langtang release point,,,coordinates supplied for this study,85.52533,28.29070,355389,3130288,source

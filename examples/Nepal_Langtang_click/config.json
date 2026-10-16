@@ -1,0 +1,162 @@
+{
+ "WIDTH": 1150,
+ "HEIGHT": 1120,
+ "dx": 30.0,
+ "dy": 30.0,
+ "Courant_num": 0.07,
+ "base_depth": 30.0,
+ "g": 9.81,
+ "NLSW_or_Bous": 0,
+ "Theta": 2,
+ "isManning": 0,
+ "friction": 0.0,
+ "seaLevel": 0.0,
+ "sim_end_time": 36000.0,
+ "west_boundary_type": 0,
+ "east_boundary_type": 0,
+ "south_boundary_type": 0,
+ "north_boundary_type": 0,
+ "bathy_flatten_edges": 0,
+ "disturbanceType": 6,
+ "slide_rheology_model": 4,
+ "slide_rho_s": 2000.0,
+ "slide_rho_ratio": 0.5,
+ "slide_delta": 0.05,
+ "slide_hblend": 1.0,
+ "slide_maxspeed": 120.0,
+ "slide_curvature": 1,
+ "slide_slope_corr": 2,
+ "slide_rest_gate": 1,
+ "slide_mu": 0.0,
+ "slide_gas_loss": 0,
+ "slide_pore_T": 300.0,
+ "slide_pore_conc": 0.0,
+ "slide_pore_fract": 0.0,
+ "slide_pore_mode": 0,
+ "slide_pore_diff": 0.01,
+ "slide_pore_packmax": 0.71,
+ "lahar_visc_ref": 0.001,
+ "lahar_beta1": 16.0,
+ "lahar_alpha2": 0.0272,
+ "lahar_beta2": 22.0,
+ "lahar_kappa": 24.0,
+ "lahar_n_td": 0.06,
+ "lahar_rho_c": 1000.0,
+ "lahar_diam_s": 0.0005,
+ "lahar_loss_rate": 0.0,
+ "lahar_settling": 1,
+ "lahar_topo_change": 1,
+ "lahar_erosion_coeff": 0.0002,
+ "lahar_erodible_depth": 30.0,
+ "lahar_erodible_porosity": 0.3,
+ "slide_src_x": 28651.8,
+ "slide_src_y": 25066.6,
+ "slide_src_r1": 250.0,
+ "slide_src_r2": 250.0,
+ "slide_src_angle": 0.0,
+ "slide_src_T": 275.0,
+ "slide_src_alphas": 0.0,
+ "slide_src_fract": 0.0,
+ "slide_src_intervals": [
+  [
+   0.0,
+   0.0
+  ]
+ ],
+ "run_example": 294,
+ "utm_e0": 326737.1629069801,
+ "utm_n0": 3105221.3608952696,
+ "utm_zone": "45N",
+ "pop_show": 1,
+ "pop_places_file": "data/nepal_key_points_utm45n.csv",
+ "surfaceToPlot": 24,
+ "colorMap_choice": 8,
+ "slide_colormap": 8,
+ "colorVal_min": 0.5,
+ "colorVal_max": 200.0,
+ "NumberOfTimeSeries": 1,
+ "maxdurationTimeSeries": 36000.0,
+ "timeseries_logx": 1,
+ "locationOfTimeSeries": [
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 14163.8,
+   "yts": 24034.6
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  },
+  {
+   "xts": 0.0,
+   "yts": 0.0
+  }
+ ],
+ "render_step": 8,
+ "setRenderStep": 1,
+ "credit_text": "ECP Breard",
+ "slide_click_pulse": 1,
+ "click_pulse_volume": 150000000.0,
+ "click_pulse_diameter": 500.0,
+ "click_pulse_duration": 60.0,
+ "logo_left_file": "./logo_CGFM.png",
+ "logo_right_file": "none",
+ "dil_adapt_dt": 1,
+ "dil_adapt_cfl": 0.2,
+ "outline_file": "data/nepal_deposit_outline_utm45n.csv",
+ "outline_show": 1,
+ "slide_dilatancy": 0,
+ "land_drape": 1,
+ "data_dir": "./examples/Nepal_Langtang_water/"
+}

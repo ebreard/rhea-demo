@@ -1,0 +1,22 @@
+[
+ {
+  "index": 71,
+  "id": "Fuego_click_pulses",
+  "dir": "./examples/Fuego_click_pulses/",
+  "title": "Fuego (Guatemala), click-to-erupt pulses",
+  "solver": "pdc",
+  "listed": true,
+  "menu": 58,
+  "set": "showcase"
+ },
+ {
+  "index": 294,
+  "id": "Nepal_Langtang_click",
+  "dir": "./examples/Nepal_Langtang_click/",
+  "title": "Langtang collapse flood, click to release (Rhea-Flood)",
+  "solver": "rheaflood",
+  "listed": true,
+  "menu": 106,
+  "set": "showcase"
+ }
+]

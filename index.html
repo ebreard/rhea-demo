@@ -1,0 +1,2093 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="robots" content="noindex, nofollow">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Rhea-WebGPU</title>
+    <link rel="stylesheet" href="fonts/fonts.css?v=1">
+    <style>
+        
+        
+        .solver-na > .window-content > *:not(.solver-na-note),
+        .solver-na-block > *:not(.solver-na-note) {
+            opacity: 0.35; filter: saturate(0.2); pointer-events: none;
+        }
+        .solver-na-note {
+            display: block; margin: 6px 8px 8px 8px; padding: 4px 8px;
+            border-left: 3px solid var(--ember, #d1622a);
+            font-style: italic; font-size: 0.92em;
+        }
+        
+        .solver-na-flag { font-style: italic; font-size: 0.85em; opacity: 0.75; }
+        
+        
+        :root {
+            --basalt: #0b0f14;   
+            --crater: #131a23;   
+            --crater-2: #182230; 
+            --slate: #243c54;    
+            --steel: #304860;
+            --rule: #22303f;
+            --rule-2: #31465c;
+            --ash: #ece6d8;      
+            --ash-2: #a3aeb8;
+            --ash-3: #6d7a86;
+            --ember: #e08a3c;    
+            --ember-dim: #8a5426;
+            --ember-soft: #2a1c11;
+            --lava: #b44848;     
+            --incand: #f0d68c;   
+        }
+        #run_example-select, #case_set-select { max-width: 100%; }
+        #run_example-select option { white-space: normal; }
+        
+        html { background: var(--basalt); }
+
+        
+        #caseparams-host { margin-top: 8px; }
+        .cp-head { margin: 2px 0 8px 0; }
+        .cp-title { color: var(--ember); font-weight: 600; font-size: 1.05em; display: block; }
+        .cp-sub { opacity: 0.75; font-size: 12px; display: block; margin-top: 2px; }
+        .cp-group { margin-top: 8px; border: 1px solid var(--steel); border-radius: 6px;
+                    padding: 6px; background: var(--crater); }
+        .cp-summary { cursor: pointer; color: var(--ember); font-weight: 600; }
+        .cp-help { opacity: 0.75; font-size: 12px; margin: 4px 2px 6px 2px; }
+        
+        #caseparams-host { container-type: inline-size; }
+        .cp-rows { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 7px; font-size: 13px; }
+        .cp-row { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 8px;
+                  row-gap: 2px; align-items: center; min-width: 0; }
+        .cp-row[hidden] { display: none; }
+        .cp-row > .cp-label { grid-column: 1 / -1; }
+        .cp-row-wide > .cp-sched { grid-column: 1 / -1; }
+        .cp-label { cursor: help; overflow-wrap: anywhere; min-width: 0; }
+        .cp-num { width: 7.5em; max-width: 100%; min-width: 0; }
+        .cp-select { max-width: 100%; min-width: 0; font-size: 12px; }
+        .cp-unit { opacity: 0.7; font-size: 12px; white-space: nowrap; }
+        .cp-when { opacity: 0.55; font-size: 11px; font-style: italic; }
+        .cp-note { margin-top: 6px; font-size: 12px; opacity: 0.85; color: var(--incand); overflow-wrap: anywhere; }
+        .cp-sched { display: grid; row-gap: 3px; min-width: 0; }
+        .cp-sched-row { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 7.5em) max-content;
+                        column-gap: 6px; align-items: center; min-width: 0; }
+        .cp-sched-row > input { width: 100%; min-width: 0; }
+        .cp-sched-hdr { opacity: 0.7; font-size: 11px; }
+        .cp-btn { font-size: 11px; padding: 1px 6px; width: max-content; }
+        .cp-action { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+        .cp-action .cp-btn { font-size: 12px; padding: 3px 10px; color: var(--ember); border-color: var(--ember); }
+        .cp-msg { font-size: 12px; color: var(--incand); overflow-wrap: anywhere; }
+        .cp-range { display: flex; align-items: center; gap: 6px; }
+        .cp-range input[type=range] { width: 100%; min-width: 60px; accent-color: var(--ember); }
+        .cp-range-val { font-size: 11px; min-width: 3.5ch; text-align: right; }
+        @container (min-width: 400px) {
+            .cp-rows { grid-template-columns: minmax(0, 1fr) max-content max-content;
+                       column-gap: 8px; row-gap: 4px; align-items: center; }
+            .cp-row { display: contents; }
+            .cp-row[hidden] > * { display: none; }
+            .cp-row > .cp-label { grid-column: auto; }
+            .cp-row-wide > .cp-sched { grid-column: 2 / span 2; }
+        }
+
+        
+        body[data-solver="pdc"] #design-container,
+        body[data-solver="pdc"] #sediment-container,
+        body[data-solver="pdc"] #disturbance-container,
+        body[data-solver="pdc"] #incident-wave-block,
+        body[data-solver="debris"] #design-container,
+        body[data-solver="debris"] #sediment-container,
+        body[data-solver="debris"] #disturbance-container,
+        body[data-solver="debris"] #incident-wave-block,
+        body[data-solver="pdcdilute"] #design-container,
+        body[data-solver="pdcdilute"] #sediment-container,
+        body[data-solver="pdcdilute"] #disturbance-container,
+        body[data-solver="pdcdilute"] #incident-wave-block,
+        body[data-solver="rheaflood"] #design-container,
+        body[data-solver="rheaflood"] #sediment-container,
+        body[data-solver="rheaflood"] #disturbance-container,
+        body[data-solver="rheaflood"] #incident-wave-block,
+        body[data-solver="rheamudflow"] #design-container,
+        body[data-solver="rheamudflow"] #sediment-container,
+        body[data-solver="rheamudflow"] #disturbance-container,
+        body[data-solver="rheamudflow"] #incident-wave-block,
+        body[data-solver="turbidity"] #design-container,
+        body[data-solver="turbidity"] #sediment-container,
+        body[data-solver="turbidity"] #disturbance-container,
+        body[data-solver="turbidity"] #incident-wave-block,
+        body[data-solver="rheawave"] #disturbance-container,
+        body[data-solver="pdc"] #depvis-panel,
+        body[data-solver="debris"] #depvis-panel,
+        body[data-solver="rheawave"] #depvis-panel,
+        body[data-solver="rheaflood"] #depvis-panel,
+        body[data-solver="rheamudflow"] #depvis-panel {
+            display: none !important;
+        }
+        body { font-family: "Space Grotesk", "Bahnschrift", "Segoe UI", system-ui, sans-serif; }
+        
+        
+        html:has(body.darkmode) {
+            background:
+                radial-gradient(rgba(0, 0, 0, 0) 50%, rgba(3, 7, 12, .16) 82%, rgba(2, 4, 7, .7) 100%),
+                radial-gradient(90% 70% at 0% 0%, rgba(224, 138, 60, .20), rgba(224, 138, 60, 0) 62%),
+                linear-gradient(135deg, #1a1719 0%, #45301f 24%, #1b3345 60%, #0d1722 100%);
+            background-attachment: fixed;
+        }
+        body.darkmode { background: transparent; color: var(--ash); }
+        
+        body.darkmode .custom-window, body.darkmode #verticalbar {
+            background: linear-gradient(180deg, rgba(25, 40, 54, .90), rgba(13, 20, 29, .86));
+            color: var(--ash); border: 1px solid var(--steel); border-radius: 8px;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(122, 184, 255, .09); }
+        body.darkmode .window-content, body.darkmode .flex-container { background: transparent; color: var(--ash); }
+        
+        body.darkmode .window-header {
+            background: linear-gradient(90deg, rgba(224, 138, 60, .16), rgba(36, 60, 84, .50) 45%, rgba(24, 34, 48, .35));
+            color: var(--ash); border-radius: 6px;
+            box-shadow: inset 0 1px 0 rgba(240, 214, 140, .07), inset 0 -1px 0 rgba(0, 0, 0, .25); }
+        body.darkmode .window-header .minimize-button {
+            background: rgba(36, 56, 76, .55); border: 1px solid var(--rule-2); border-radius: 5px; }
+        body.darkmode select, body.darkmode input, body.darkmode button {
+            background: var(--crater-2); color: var(--ash); border: 1px solid var(--rule-2); }
+        body.darkmode a { color: #7ab8ff; }
+        body.darkmode hr { border-color: var(--rule-2); }
+        body.darkmode div, body.darkmode label, body.darkmode span, body.darkmode p,
+        body.darkmode html4f { color: var(--ash); }
+        body.darkmode #axes-overlay { filter: invert(1) hue-rotate(180deg); }
+        
+        body.darkmode .window-header span { color: var(--ember); }
+        body.darkmode .custom-file-upload-button {
+            background-color: var(--crater-2); color: var(--ash-2); border-color: var(--rule-2); }
+        body.darkmode .custom-file-upload-button:hover { border-color: var(--ember); }
+        body.darkmode #log-container {
+            background-color: var(--basalt); color: var(--ash-2); border-color: var(--rule); }
+        body.darkmode #constants-container, body.darkmode #mods-container,
+        body.darkmode #examples-container,
+        body.darkmode #downloads-container, body.darkmode #uploads-container,
+        body.darkmode #viz-container, body.darkmode #design-container,
+        body.darkmode #disturbance-container, body.darkmode #boundary-container,
+        body.darkmode #sediment-container, body.darkmode #timeseries-container,
+        body.darkmode #animations-container, body.darkmode #parameters-container,
+        body.darkmode #analysis-container {
+            background-color: transparent; border-color: var(--steel); }
+        body.darkmode a { color: #7ab8ff; }
+
+        
+        .console-btn {
+            width: 100%; padding: 9px 0; font-weight: 600; font-size: 14px;
+            letter-spacing: 0.2px; border-radius: 6px; cursor: pointer;
+            margin-bottom: 7px; display: block;
+            background-color: #ececec; color: #222; border: 1px solid #999; }
+        button.console-btn:hover { border-color: #d1801f; }
+        button.console-btn.console-btn-primary,
+        button.console-btn.console-btn-active {
+            border-color: #d1801f; color: #8a4f00; background-color: #fdf3e6; }
+        body.darkmode button.console-btn {
+            background: linear-gradient(180deg, rgba(36, 56, 76, .92), rgba(16, 25, 35, .90));
+            color: var(--ash); border: 1px solid var(--rule-2);
+            box-shadow: inset 0 1px 0 rgba(122, 184, 255, .10), 0 6px 16px -8px rgba(0, 0, 0, .6); }
+        body.darkmode button.console-btn:hover { border-color: var(--ember); color: var(--ember); }
+        body.darkmode button.console-btn.console-btn-primary,
+        body.darkmode button.console-btn.console-btn-active {
+            background: linear-gradient(180deg, rgba(224, 138, 60, .30), rgba(138, 84, 38, .20));
+            color: var(--incand); border: 1px solid var(--ember-dim);
+            box-shadow: inset 0 1px 0 rgba(240, 214, 140, .18), 0 6px 18px -8px rgba(224, 138, 60, .45); }
+        
+        button.console-btn.console-btn-danger {
+            font-weight: 500; font-size: 13px; color: #6b6b6b; }
+        button.console-btn.console-btn-danger:hover { border-color: #b3453a; color: #8c2f20; }
+        button.console-btn.console-btn-danger.console-btn-danger-armed {
+            background-color: #fdeae6; color: #8c2f20; border: 1px solid #b3453a; }
+        body.darkmode button.console-btn.console-btn-danger {
+            background: var(--crater); color: var(--ash-3); border: 1px solid var(--rule-2); }
+        body.darkmode button.console-btn.console-btn-danger:hover {
+            border-color: var(--lava); color: #e08b7a; }
+        body.darkmode button.console-btn.console-btn-danger.console-btn-danger-armed {
+            background: #2a1c19; color: #e08b7a; border: 1px solid var(--lava); }
+        
+        #consolebar select, #consolebar input, #consolebar details,
+        #examples-container select, #examples-container input {
+            max-width: 100%; box-sizing: border-box; }
+        #consolebar label, #examples-container label {
+            display: inline-block; max-width: 100%; white-space: normal;
+            overflow-wrap: break-word; }
+        #consolebar details { overflow-x: hidden; }
+        
+        #consolebar > details { flex: 0 0 auto; }
+        #consolebar details > summary { list-style: none; padding: 2px 0; }
+        #consolebar details > summary::-webkit-details-marker { display: none; }
+        
+        #consolebar details > summary::before {
+            content: '+'; display: inline-block; width: 1.1em;
+            font-weight: 700; color: var(--ember); }
+        #consolebar details[open] > summary::before { content: '-'; }
+        #run-example-current {
+            margin: 1px 4px 11px 4px; font-size: 12px; line-height: 1.4;
+            color: #666; text-align: center; white-space: normal;
+            word-break: break-word; }
+        body.darkmode #run-example-current { color: var(--ash-3); }
+        #run-example-current.loading { color: #c8891a; font-weight: 600; }
+        body.darkmode #run-example-current.loading { color: #f0b34a; }
+        #consolebar .console-controls { margin-bottom: 12px; font-size: 13px; }
+        #consolebar .console-controls label { display: block; margin-bottom: 5px; }
+
+        #masthead {
+            display: flex; gap: 13px; align-items: center;
+            padding: 16px 4px 12px; margin: 0 1% 6px;
+            border-bottom: 1px solid #ccc;
+        }
+        #masthead img {
+            width: 46px; height: 46px; flex: none; border-radius: 50%;
+            box-shadow: 0 0 0 1px #ccc;
+        }
+        #masthead .masthead-note {
+            margin: 2px 0 0 0;
+            font-size: 11px;
+            line-height: 1.35;
+            opacity: 0.75;
+        }
+        #masthead .masthead-note a { color: inherit; }
+        #masthead h1 {
+            font-size: 1.16rem; font-weight: 700; letter-spacing: .055em;
+            text-transform: uppercase; margin: 0; line-height: 1.05;
+        }
+        #masthead h1 span { color: #d1801f; }
+        #masthead p { margin: 3px 0 0; font-size: .72rem; color: #666; line-height: 1.35; }
+        body.darkmode #masthead { border-bottom: 1px solid var(--rule-2); }
+        body.darkmode #masthead img {
+            box-shadow: 0 0 0 1px var(--rule-2), 0 3px 14px -4px rgba(224,138,60,.5); }
+        body.darkmode #masthead h1 { color: var(--ash); }
+        body.darkmode #masthead h1 span {
+            background: linear-gradient(90deg, var(--ember), var(--incand));
+            -webkit-background-clip: text; background-clip: text; color: transparent; }
+        body.darkmode #masthead p { color: var(--ash-3); }
+
+        #main-container {
+            width: 98vw; 
+            height: 100vh; 
+            display: flex;
+            justify-content: flex-start;
+            overflow: visible; 
+            font-size: 14px; 
+            font-family: "Space Grotesk", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+        }
+
+        #webgpuCanvas {
+            
+            width: 100%;
+            height: auto; 
+            margin-top: 2px;
+            margin-bottom: 20px;
+            touch-action: none; 
+        }
+
+        #renderCanvas {
+            
+            width: 0%;
+            height: auto; 
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        #horizontalbar {
+            margin-top: 20px;
+            margin-left: 1%;
+            margin-right: 1%;
+            width: 25%; 
+            display: flex;
+            flex-direction: column; 
+        }
+
+        #verticalbar {
+            margin-left: 1%;
+            margin-right: 1%;
+            width: 60%; 
+            display: flex;
+            flex-direction: column; 
+        }
+
+        #consolebar {
+            margin-top: 20px;
+            margin-left: 1%;
+            margin-right: 1%;
+            width: 15%; 
+            display: flex;
+            flex-direction: column; 
+        }
+
+        #log-container {
+            
+            height: auto;
+            max-height: 70vh;
+            
+            flex: 0 0 auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overflow-wrap: anywhere;
+            background-color: #f4f4f4;
+            border: 1px solid #ccc;
+            padding: 5px;
+            white-space: pre-wrap;
+            font-family: "JetBrains Mono", "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+            font-size: 12px; 
+        }
+
+        #examples-container,
+        #constants-container, #mods-container, #downloads-container, #uploads-container, #viz-container, #design-container, #disturbance-container, #boundary-container, #sediment-container, #timeseries-container, #animations-container, #parameters-container, #analysis-container {
+            background-color: #f9f9f9;
+            border: 1px solid red;
+            padding: 5px;
+            margin-left: 1%;
+            margin-right: 1%;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            overflow-y: visible;
+            line-height: 1.2; 
+        }
+
+        #constants-container {
+            
+            line-height: 0.7; 
+            width: auto;
+        }
+
+        button, select {
+            font-size: 14px; 
+            font-family: "Space Grotesk", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+        }
+        
+        .custom-file-upload-button {
+            display: inline-block;
+            padding: 2px 2px;
+            cursor: pointer; 
+            border: 1px solid #cccccc; 
+            border-radius: 0px; 
+            text-align: left;
+            white-space: normal; 
+            word-wrap: break-word; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            background-color: rgb(197, 197, 197); 
+            
+            font-size: 14px; 
+            font-family: "Space Grotesk", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+        }
+
+        
+        .dem-options { margin: 6px 0 4px 0; font-size: 0.9em; }
+        .dem-options label { margin-right: 4px; }
+        .dem-options input { width: 5em; margin-right: 14px; }
+        #dem-notes { margin: 4px 0 6px 0; font-size: 0.9em; line-height: 1.35; opacity: 0.9; }
+
+        .custom-file-upload-button:hover {
+                
+           border-color: #030303; 
+        }
+
+        
+        .boundary-time-series-upload-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .boundary-time-series-upload-row .custom-file-upload-button {
+            max-width: 145px;
+        }
+        
+
+        .custom-window {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            position: relative;
+        } 
+
+        .window-content {
+            display: block; 
+        }
+
+        .window-header {
+            display: flex;
+            justify-content: center; 
+            align-items: center; 
+            text-align: center; 
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .window-header span {
+            flex-grow: 1; 
+            color: red;
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 0.04em;
+        }
+
+        .minimize-button {
+            margin-left: auto; 
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: 18px;
+        }
+
+        .window-content[data-default="minimized"] {
+            display: none;
+        }
+        .window-content[data-default="maximized"], .window-content {
+            display: block; 
+        }
+        
+        
+        #simstatus-container p { margin: 0.1em 0.9em; line-height: 1.3; white-space: nowrap; }
+        
+        .stat-name { font-style: italic; opacity: 0.78; }
+        
+        .stat-value { font-weight: 600; letter-spacing: 0.01em;
+                      font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+                      display: inline-block; }
+        #simstatus-container p.simstat { flex: 0 0 auto; }
+        
+        #simstatus-container.flex-container { justify-content: flex-start; max-width: 100%; }
+        #simstatus-container .simstat-break { flex-basis: 100%; height: 0; margin: 0; }
+        .flex-container {
+            display: flex;
+            flex-direction: row; 
+            align-items: flex-start; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            align-items: center; 
+        }
+
+        
+        input[type="number"] {
+            width: 100px;  
+        }
+
+
+    </style>
+
+ <style>
+#uploads-container, #design-container, #mods-container, #boundary-container, #sediment-container,
+#disturbance-container, #analysis-container, #animations-container, #downloads-container,
+#parameters-container { display: none !important; }
+@media (max-width: 820px) {
+  #main-container { flex-direction: column; width: 100%; height: auto; padding: 0 10px 16px; box-sizing: border-box; }
+  #verticalbar, #consolebar { width: auto; margin: 4px 0; }
+  /* the left column's pieces join the page column: chooser, buttons, map, then the credits */
+  #horizontalbar { display: contents; }
+  #horizontalbar > br { display: none; }
+  /* negative orders: the credits are partly bare text, which stays at order 0 in page order */
+  #masthead { order: -4; margin: 8px 0 4px; }
+  #examples-container { order: -3; margin: 4px 0; }
+  #consolebar { order: -2; }
+  #verticalbar { order: -1; }
+  #horizontalbar > *:not(#masthead):not(#examples-container) { margin: 2px 0; }
+  #viz-container, #timeseries-container { display: none !important; }
+  /* on a phone the map follows the case chooser and three buttons */
+  #consolebar { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  #consolebar > br, #consolebar .console-controls, #consolebar > .window-header, #log-container,
+  #caseparams-host, #depvis-panel, #load-example-simulation-btn, #reset-sim-btn { display: none !important; }
+  #consolebar .console-btn { flex: 1 1 30%; margin: 0; }
+  #run-example-current { flex: 1 1 100%; order: -1; }
+  #simstatus-container { flex-wrap: wrap; }
+  #simstatus-container *, .simstat, .stat-value { white-space: normal !important; overflow-wrap: anywhere; max-width: 100%; }
+  #webgpuCanvas { width: 100%; }
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+  var msg = '';
+  try {
+    if (!('gpu' in navigator)) {
+      msg = 'This browser does not offer WebGPU, which the model needs. Use Chrome on a recent Android phone, Safari on iOS 26 or later, or Chrome or Edge on a computer.';
+    } else {
+      var a = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      if (!a) {
+        msg = 'WebGPU is on, but no graphics adapter is available on this device.';
+      } else if (a.limits.maxSampledTexturesPerShaderStage < 20) {
+        msg = 'This device offers ' + a.limits.maxSampledTexturesPerShaderStage + ' texture slots per shader stage and the map needs 20, so it may stay blank. Most recent phones and computers have enough.';
+      }
+    }
+  } catch (e) { msg = 'WebGPU could not start here: ' + e.message; }
+  if (!msg) { return; }
+  var d = document.createElement('div');
+  d.textContent = msg;
+  d.style.cssText = 'position:sticky;top:0;z-index:9999;padding:8px 12px;background:#7a2e1a;color:#fff;font:14px sans-serif;';
+  document.body.prepend(d);
+});
+</script>
+</head>
+<body>
+<script>document.body.classList.add("darkmode");</script>
+    <div id="main-container">
+
+        <div id="horizontalbar">
+            <div id="masthead">
+                <img src="ecpb_roundel.png" alt="ECPB volcano roundel">
+                <div>
+                    <h1>Rhea<span>-WebGPU</span></h1>
+                    <p>Depth-averaged mass flows and waves on the GPU</p>
+                    <p class="masthead-note">Demo: choose a case, press <b>Load and run</b>, then tap the map to start a flow. It runs on this device's graphics chip and needs WebGPU: recent Chrome on Android, Safari on iOS 26 or later, or Chrome and Edge on a computer.</p>
+                </div>
+            </div>
+            <div id="examples-container" class="custom-window">
+                <div class="window-header">
+                    <span> Pre-configured Examples </span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content" data-default="maximized">
+                         
+                         <label for="solver_mode-select">Solver mode:</label>
+                         <select id="solver_mode-select">
+                             <option value="pdc">Rhea-PDC (concentrated: dense granular flows)</option>
+                            <option value="rheaflood">Rhea-Flood (floods and bulking flows)</option>
+</select>
+                         <br />
+                         <br />
+                         <label for="case_set-select">Case set:</label>
+                         <select id="case_set-select">
+                             
+                         </select>
+                         <br />
+                         <br />
+                         <label for="run_example-select">Choose Example:</label>
+                         <select id="run_example-select" name="run_exampleValue">
+                             
+                         </select>
+                         <script>(async function(){const f=document.getElementById("solver_mode-select"),i=document.getElementById("run_example-select"),y=await new Promise(function(e){(function n(){window.__rheaExamplesReady?window.__rheaExamplesReady.then(e):setTimeout(n,20)})()}),l=document.getElementById("case_set-select"),b={},E={},c="showcase",m="*",C=y.filter(function(e){return e.listed}).sort(function(e,n){return e.menu-n.menu});for(const e of y)b[e.index]=e.solver,E[e.index]=e.set||c;for(const e of C){const n=document.createElement("option");n.value=String(e.index),n.textContent=e.title,i.appendChild(n)}const v=e=>b[parseInt(e,10)]||"celeris",S=e=>E[parseInt(e,10)]||c;function I(e){const n=[],o={};for(const t of C){if(t.solver!==e)continue;const s=t.set||c;s in o||(o[s]=0,n.push(s)),o[s]+=1}return n.sort(function(t,s){return(t===c?0:1)-(s===c?0:1)}),n.map(function(t){return{name:t,count:o[t]}})}function O(e,n){const o=I(e);l.innerHTML="";for(const t of o){const s=document.createElement("option");s.value=t.name,s.textContent=(t.name===c?"Showcase":t.name)+" ("+t.count+")",l.appendChild(s)}if(o.length>1){const t=document.createElement("option");t.value=m,t.textContent="All cases of this module ("+o.reduce(function(s,d){return s+d.count},0)+")",l.appendChild(t)}l.value=n&&(n===m||o.some(function(t){return t.name===n}))?n:c,l.disabled=o.length<=1}function p(e,n,o){return v(e)===n&&(o===m||S(e)===o)}function x(e,n){let o=null;for(const t of i.options){const s=p(t.value,e,n);t.hidden=!s,t.disabled=!s,s&&o===null&&(o=t.value)}return o}const _={"disturbance-container":"Not used by this solver. It runs the dynamic mass-flow layer, which this control cannot select; choosing one of its sources would switch that layer off."},u=Object.assign({},_,{"incident-wave-block":"Not used by this solver. Wave forcing drives the water solver only, and on ground that never gets wet Rhea skips that solver; choosing a wave type here starts it running again for no physical gain.","design-container":"Not used by this solver. The engineered components act on the water solver, which this mode does not run.","sediment-container":"Not used by this solver. The sediment model rides on the water solver, which this mode does not run."}),P=Object.assign({},u,{"incident-wave-block":"Not used by this solver. The current runs beneath a seawater ambient carried by the mass-flow layer itself, not by the water solver, so wave forcing drives nothing here."}),B={celeris:{},rheawave:_,pdc:u,pdcdilute:u,debris:u,rheamudflow:u,rheaflood:u,turbidity:P},T=["incident-wave-block","design-container","sediment-container","disturbance-container"];function R(e){const n=B[e]||{};for(const o of T){const t=document.getElementById(o);if(!t)continue;const s=t.classList.contains("custom-window"),d=s?t.querySelector(".window-content"):t;if(!d)continue;let r=d.querySelector(":scope > .solver-na-note");const w=s?t.querySelector(".window-header > span"):null;let a=w?w.querySelector(".solver-na-flag"):null;n[o]?(t.classList.add(s?"solver-na":"solver-na-block"),r||(r=document.createElement("div"),r.className="solver-na-note",d.insertBefore(r,d.firstChild)),r.textContent=n[o],r.hidden=!1,w&&!a&&(a=document.createElement("em"),a.className="solver-na-flag",a.textContent=" (not used by this solver)",w.appendChild(a)),a&&(a.hidden=!1)):(t.classList.remove("solver-na","solver-na-block"),r&&(r.hidden=!0),a&&(a.hidden=!0))}}let h=!1;function g(e){const n=f.value;R(n),document.body.dataset.solver=n,typeof window.celerisBuildCasePanel=="function"&&window.celerisBuildCasePanel(n);const o=v(i.value)===n&&!e?S(i.value):c;O(n,o);const t=l.value,s=x(n,t);s!==null&&(e||!p(i.value,n,t))&&(i.value=s,h=!0,i.dispatchEvent(new Event("change")),h=!1)}f.addEventListener("change",function(){g(!0)}),l.addEventListener("change",function(){const e=f.value,n=l.value,o=x(e,n);o!==null&&!p(i.value,e,n)&&(i.value=o,h=!0,i.dispatchEvent(new Event("change")),h=!1,window.celerisPreviewCase&&window.celerisPreviewCase(i.value))}),i.addEventListener("change",function(){h||(f.value=v(i.value),g(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value))});const N=function(e){return e!==null&&[...i.options].some(function(n){return n.value===e})},L=new URLSearchParams(window.location.search).get("ex"),A=N(L)?L:"65";N(A)&&(i.value=A),f.value=v(i.value),g(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value)})();</script>
+                </div>
+            </div>
+
+            <div id="uploads-container" class="custom-window">
+                <div class="window-header">
+                    <span> Load Your Own Simulation Datafiles </span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content" data-default="minimized">
+                    <html4f>
+                        <b>Questions/Problems/Requests </b> - use the <a href="https://celeris.discourse.group/categories" target="_blank" rel="noopener noreferrer">Users Forum</a>
+                        <br />
+                        <b>NOTE:</b> Options with an asterisk* are not currently working - these are largely placeholders for future updates.
+                        <br />
+                    </html4f>
+                    <br />
+                    <html4f>
+                        <b>Download Example Configurations</b> <a href="https://www.dropbox.com/scl/fo/xdlsgirw2efdic97epaj0/ANofWQQ4xytKZjatxopJc-4?rlkey=2sl7ll7o4ojfvixq0uktdt8o9&st=jgqrraa1&dl=0" target="_blank" rel="noopener noreferrer">here</a>
+                    </html4f>
+                    <br />
+                    <br />
+                    <html4f>
+                        ---------------------- <br>
+                        Upload Custom Configuration Files here:</a>
+                    </html4f>                    
+                    <div>
+                        <input type="file" id="configFile" accept="application/json" style="display: none;" />
+                        <label for="configFile" class="custom-file-upload-button">
+                            Load JSON Config File [Required]
+                        </label>
+                        <br />
+                        <br />
+                        <input type="file" id="bathymetryFile" accept=".txt,.asc,.tif,.tiff,application/txt" style="display: none;" />
+                        <label for="bathymetryFile" class="custom-file-upload-button">
+                            Load Bathymetry / DEM File [Required]
+                        </label>
+                        <br />
+                        <html4f>
+                            This can be a plain table of elevations whose size the config states, or a DEM the
+                            page reads for itself: an ESRI ASCII grid (.asc) or a GeoTIFF (.tif), in UTM or in
+                            latitude and longitude, which is projected to the UTM zone of its centre. A DEM
+                            sets the grid, the cell size, the georeference and the elevation range of the
+                            config uploaded with it, so that config only has to be a case of the kind you
+                            want: its physics, friction and run length are kept, and the source or the failure
+                            surface it carried is moved to the centre of the domain, to be placed on the map.
+                            Cells with no data are filled from their nearest valid neighbours.
+                        </html4f>
+                        <div class="dem-options">
+                            <label for="demCell">DEM cell size (m)</label>
+                            <input type="text" id="demCell" placeholder="as read" />
+                            <label for="demZone">UTM zone</label>
+                            <input type="text" id="demZone" placeholder="10N" />
+                        </div>
+                        <div id="dem-notes" hidden></div>
+                        <br />
+                        <input type="file" id="waveFile" accept="application/txt" style="display: none;" />
+                        <label for="waveFile" class="custom-file-upload-button">
+                            Load Wave [amp,period,dir] Data File [Optional]
+                        </label>
+                        <br />
+                        <br />
+                        <input type="file" id="etaInitialConditionFile" accept="application/txt" style="display: none;" />
+                        <label for="etaInitialConditionFile" class="custom-file-upload-button">
+                            Load Initial Free Surface Data File [Optional]
+                        </label>
+                        <br />
+                        <br />
+                        <input type="file" id="frictionmapFile" accept="application/txt" style="display: none;" />
+                        <label for="frictionmapFile" class="custom-file-upload-button">
+                            Load Friction Map Data File [Optional]
+                        </label>
+                        <br />
+                        <br />
+                        <input type="file" id="hardbottomFile" accept="application/txt" style="display: none;" />
+                        <label for="hardbottomFile" class="custom-file-upload-button">
+                            Load Hard (non-erodible) Bottom Elevation Data File [Optional]
+                        </label>
+                        <br />
+                        <br />
+                        <html4f>
+                            Boundary time-series files can be loaded for boundary type 5 and should contain station locations plus time, eta, hu, and hv columns.  
+                            See the Users Forum for details on how to construct these OPTIONAL boundary time series files.
+                        </html4f>
+                        <br />
+                        <div class="boundary-time-series-upload-row">
+                            <input type="file" id="westBoundaryTimeSeriesFile" accept="application/txt,.txt" style="display: none;" />
+                            <label for="westBoundaryTimeSeriesFile" class="custom-file-upload-button">
+                                Load West Boundary File
+                            </label>
+                            <input type="file" id="eastBoundaryTimeSeriesFile" accept="application/txt,.txt" style="display: none;" />
+                            <label for="eastBoundaryTimeSeriesFile" class="custom-file-upload-button">
+                                Load East Boundary File
+                            </label>
+                            <input type="file" id="southBoundaryTimeSeriesFile" accept="application/txt,.txt" style="display: none;" />
+                            <label for="southBoundaryTimeSeriesFile" class="custom-file-upload-button">
+                                Load South Boundary File
+                            </label>
+                            <input type="file" id="northBoundaryTimeSeriesFile" accept="application/txt,.txt" style="display: none;" />
+                            <label for="northBoundaryTimeSeriesFile" class="custom-file-upload-button">
+                                Load North Boundary File
+                            </label>
+                        </div>
+                        <br />
+                        <html4f>
+                            For image overlay, you have two choices.  
+                            If you have a high-resolution satellite or aerial image, you can load that file below.  
+                            Note that this image must cover the exact area as the loaded bathy/topo, or the overlay will not be spatially matched.  
+                            Alternatively, if you know the lat/lon coordinates of the corners of the bathy/topo, you can specify these in the input json file (see examples). 
+                            Based on these corner coordinates, the code will download a Google Maps tile for the domain, and use that as an overlay.  </a>
+                        </html4f>
+                        <br />
+                        <input type="file" id="satimageFile" accept="image/jpeg, image/png, image/bmp, image/gif" style="display: none;" />
+                        <label for="satimageFile" class="custom-file-upload-button" >
+                            Load Overlay Image (jpg, png, bmp, gif) [Optional]
+                        </label>
+                        <br />
+                        <br /> 
+                        <html4f>
+                            Experimental feature: To add 3D models to the "Explorer" view, upload a model json file.  
+                            Details on the format of this file can be found <a href="https://www.sqrtgh.com/forum/questions-answers/adding-3d-objects-buildings-etc-to-the-3d-explorer-view" target="_blank" rel="noopener noreferrer">here</a>.
+                        </html4f>
+                        <br />
+                        <input type="file" id="modelFile" accept="application/json" style="display: none;" />
+                        <label for="modelFile" class="custom-file-upload-button">
+                            Load JSON 3D Model File [Optional]
+                        </label>
+                        <br />
+                        <br />
+
+                        <button id="start-simulation-btn">Start Simulation</button>
+                        <br />
+                        <br />
+                         <br />
+                         <br />
+
+                         
+                         <div style="display:none;">
+                             <label for="simPause-select">Pause / Resume Simulation:</label>
+                             <select id="simPause-select" name="simPauseValue">
+                                 <option value="1">Pause</option>
+                                 <option value="-1">Resume</option>
+                             </select>
+                             <button id="refresh-button">Clear Memory / Reset Simulator</button>
+                         </div>
+
+    
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="viz-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Modify Visualization </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+
+                    
+                    <label for="surfaceToPlot-select">Property to Plot:</label>
+                    <select id="surfaceToPlot-select" name="surfaceToPlotValue">
+                        <option value="0">Free Surface Elevation (m)</option>
+                        <option value="6">Bathymetry/Topography (m)</option>
+                        <option value="15">Bottom Friction Map </option>
+                        <option value="1">Fluid Speed (m/s)</option>
+                        <option value="2">East-West (x) Velocity (m/s)</option>
+                        <option value="3">North-South (y) Velocity (m/s)</option>
+                        <option value="4">Vertical Vorticity (1/s)</option>
+                        <option value="23">Mean |Vertical Vorticity| (1/s)</option>
+                        <option value="5">Foam / Tracer Concentration</option>
+                        <option value="11">Mean Foam / Tracer Concentration</option>
+                        <option value="16">Max Free Surface Elev (m)</option>
+                        <option value="7">Mean Free Surface Elev (m)</option>
+                        <option value="8">Mean Fluid Speed [Magn] (m/s)</option>
+                        <option value="9">Mean Fluid Speed [E-W] (m/s)</option>
+                        <option value="10">Mean Fluid Speed [N-S] (m/s)</option>
+                        <option value="12">RMS Wave Height (m)</option>
+                        <option value="13">Significant Wave Height (m)</option>
+                        <option value="14">Difference from Baseline Hs (m) </option>
+                        <option value="21">Depth Change due to Sed Transport </option>
+                        <option value="24">Flow thickness (m)</option>
+                        <option value="25">Flow speed (m/s)</option>
+                        <option value="26">Basal pore pressure ratio (-)</option>
+                        <option value="27">Solid volume fraction (-)</option>
+                        <option value="28">Landslide Temperature (K)</option>
+                        <option value="17">Sediment Class 1 Concentration </option>
+                        <option value="18">Sediment Class 1 Erosion Rate </option>
+                        <option value="19">Sediment Class 1 Available Depth </option>
+                        <option value="22">Design Component Map </option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="colorMap_choice-select">Colorbar Choices:</label>
+                    <select id="colorMap_choice-select" name="colorMap_choiceValue">
+                        <option value="0">Ocean</option>
+                        <option value="1">Parula</option>
+                        <option value="2">Turbo</option>
+                        <option value="3">HSV</option>
+                        <option value="4">Gray</option>
+                        <option value="5">Pink</option>
+                        <option value="6">Bathy/Topo</option>
+                        <option value="7">Pyroclastic</option>
+                        <option value="8">Water (blue to brown)</option>
+                        
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="colorVal_max-input">Maximum Color Axis Value (in units of plotted property):</label>
+                    <br />
+                    <input type="number" id="colorVal_max-input" name="colorVal_maxValue">
+                    <button id="colorVal_max-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="colorVal_min-input">Minimum Color Axis Value (in units of plotted property):</label>
+                    <br />
+                    <input type="number" id="colorVal_min-input" name="colorVal_minValue">
+                    <button id="colorVal_min-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="showBreaking-select">Transport Overlays:</label>
+                    <select id="showBreaking-select" name="showBreakingValue">
+                        <option value="1">Show Areas of Foam</option>
+                        <option value="0">No Foam or Tracer</option>
+                        <option value="2">Passive Tracer Conc</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="GoogleMapOverlay-select">Google Maps / Aerial Image Overlay:<br></label>
+                    <select id="GoogleMapOverlay-select" name="GoogleMapOverlayValue">
+                        <option value="0">No Overlay</option>
+                        <option value="1">Include Google Maps Overlay</option>
+                        <option value="2">Include Satellite / Aerial Overlay</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="ShowArrows-select">Show flow field vector arrows:<br></label>
+                    <select id="ShowArrows-select" name="ShowArrowsValue">
+                        <option value="0">No</option>
+                        <option value="1">Instantaneous Velocity Vectors</option>
+                        <option value="2">Time-Averaged Velocity Vectors</option>
+                    </select>
+                    <br />
+                    <br />
+                    <label for="arrow_scale-input">Arrow scale factor:</label>
+                    <br />
+                    <input type="number" id="arrow_scale-input" name="arrow_scaleValue">
+                    <button id="arrow_scale-button" type="button">Update</button>
+                    <br />
+                    <br />
+                    <label for="arrow_density-input">Arrow density factor:</label>
+                    <br />
+                    <input type="number" id="arrow_density-input" name="arrow_densityValue">
+                    <button id="arrow_density-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+
+                    
+                    <label for="ShowLogos-select">Show USACE & USC logos:<br></label>
+                    <select id="ShowLogos-select" name="ShowLogosValue">
+                        <option value="0">Yes</option>
+                        <option value="1">No</option>
+                    </select>
+                    <br />
+                    <br />
+                   
+
+                    
+                    <label for="viewType-select">View Mode:</label>
+                    <select id="viewType-select" name="viewTypeValue">
+                        <option value="1">-Design: 2D view, modify surfaces</option>
+                        <option value="2">-Explorer: 3D view, fly-trough scene</option>
+                        
+                    </select>
+                    <br />
+                    <br />
+                    
+                    
+                    <button id="fullscreen-button">View Simulation in Full Screen</button>
+                    <br />
+                    <br />
+                </div>
+
+            </div>
+
+            <div id="design-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Add Engineered Design Components </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+
+                    
+                    <label for="designcomponentToAdd-select">Component to Add:</label>
+                    <select id="designcomponentToAdd-select" name="designcomponentToAddValue">
+                        <option value="1">Coral Reef</option>
+                        <option value="2">Mussel/Oyster Bed</option>
+                        <option value="3">Mangroves</option>
+                        <option value="4">Kelp Bed</option>
+                        <option value="5">Light Vegetation (grass)</option>
+                        <option value="6">Medium Vegetation (shrub/scrub)</option>
+                        <option value="7">Rubblemound Structure</option>
+                        <option value="8">Vegetated Dune</option>
+                        <option value="9">Berm / Temporary Dune</option>
+                        <option value="10">Seawall</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    <html4f>
+                    Mannings n / Friction Factors </a>
+                    </html4f> 
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Coral-input">Coral Reef:</label>
+                    <input type="number" id="designcomponent_Fric_Coral-input" name="designcomponent_Fric_CoralValue">
+                    <button id="designcomponent_Fric_Coral-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Oyser-input">Mussel/Oyster Bed:</label>
+                    <input type="number" id="designcomponent_Fric_Oyser-input" name="designcomponent_Fric_OyserValue">
+                    <button id="designcomponent_Fric_Oyser-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Mangrove-input">Mangroves:</label>
+                    <input type="number" id="designcomponent_Fric_Mangrove-input" name="designcomponent_Fric_MangroveValue">
+                    <button id="designcomponent_Fric_Mangrove-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Kelp-input">Kelp Bed:</label>
+                    <input type="number" id="designcomponent_Fric_Kelp-input" name="designcomponent_Fric_KelpValue">
+                    <button id="designcomponent_Fric_Kelp-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Grass-input">Grass:</label>
+                    <input type="number" id="designcomponent_Fric_Grass-input" name="designcomponent_Fric_GrassValue">
+                    <button id="designcomponent_Fric_Grass-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Scrub-input">Scrub:</label>
+                    <input type="number" id="designcomponent_Fric_Scrub-input" name="designcomponent_Fric_ScrubValue">
+                    <button id="designcomponent_Fric_Scrub-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_RubbleMound-input">Rubblemound:</label>
+                    <input type="number" id="designcomponent_Fric_RubbleMound-input" name="designcomponent_Fric_RubbleMoundValue">
+                    <button id="designcomponent_Fric_RubbleMound-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Dune-input">Vegetated Dune:</label>
+                    <input type="number" id="designcomponent_Fric_Dune-input" name="designcomponent_Fric_DuneValue">
+                    <button id="designcomponent_Fric_Dune-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Berm-input">Berm:</label>
+                    <input type="number" id="designcomponent_Fric_Berm-input" name="designcomponent_Fric_BermValue">
+                    <button id="designcomponent_Fric_Berm-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="designcomponent_Fric_Seawall-input">Seawall:</label>
+                    <input type="number" id="designcomponent_Fric_Seawall-input" name="designcomponent_Fric_SeawallValue">
+                    <button id="designcomponent_Fric_Seawall-button" type="button">Update</button>
+                    
+                    <br />
+                    <br />
+
+                    
+                    <label for="designcomponent_Radius-input">For surface cover components, radius of coverage to add on click:</label>
+                    <br />
+                    <input type="number" id="designcomponent_Radius-input" name="designcomponent_RadiusValue">
+                    <button id="designcomponent_Radius-button" type="button">Update</button>
+                    <br />
+                    <br />
+                    
+                    <html4f>
+                        Left click (and hold) to add surface cover components (in Design Mode). </a>
+                    </html4f> 
+                    <br />
+                    <br />
+                    
+
+                    
+                    <label for="designcomponent_CrestElev-input">For linear structures (breakwaters, dunes, seawalls), crest elevation (m):</label>
+                    <br />
+                    <input type="number" id="designcomponent_CrestElev-input" name="designcomponent_CrestElevValue">
+                    <button id="designcomponent_CrestElev-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="designcomponent_CrestWidth-input">For linear structures (breakwaters, dunes, seawalls), crest width (m):</label>
+                    <br />
+                    <input type="number" id="designcomponent_CrestWidth-input" name="designcomponent_CrestWidthValue">
+                    <button id="designcomponent_CrestWidth-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="designcomponent_SideSlope-input">For linear, sloping structures (breakwaters, dunes), side slope (give as decimal, e.g. 0.25 = 1/4):</label>
+                    <br />
+                    <input type="number" id="designcomponent_SideSlope-input" name="designcomponent_SideSlopeValue">
+                    <button id="designcomponent_SideSlope-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="designcomponent_CurrentEndPoint-select">Choose Linear Structure Start/Endpoint Coordinate to Edit:</label>
+                    <select id="designcomponent_CurrentEndPoint-select" name="designcomponent_CurrentEndPointValue">
+                        <option value="1">Start Location</option>
+                        <option value="2">End Location</option>
+                    </select>
+                    <br />
+                    <br />
+                    
+                    <html4f>
+                        Right-click on structure start/end location (in Design Mode) or input coordinates below</a>
+                    </html4f> 
+                    <br />
+                    <br />
+
+                    
+                    <label for="designcomponent_xLoc-input">Location x-coordinate (m) :</label>
+                    <br />
+                    <input type="number" id="designcomponent_xLoc-input" name="designcomponent_xLocValue">
+                    <button id="designcomponent_xLoc-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="designcomponent_yLoc-input">Location y-coordinate (m) :</label>
+                    <br />
+                    <input type="number" id="designcomponent_yLoc-input" name="designcomponent_yLocValue">
+                    <button id="designcomponent_yLoc-button" type="button">Update</button>
+                    <br />
+                    <br />
+  
+                    <div id="linearstructurelocs-container" class="flex-container">
+                        
+                    </div>
+                    
+                    
+                    <button id="linearstructure-button">Add Linear Structure</button>
+                    <br />
+                    <br />
+
+
+                </div>
+
+            </div>
+
+
+            <div id="mods-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Modify Sea Level & Edit Bathy/Topo </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+
+                    
+                    <label for="changeSeaLevel-input">Change in stil water level (m of surge, tide, SLR):</label>
+                    <br />
+                    <input type="number" id="changeSeaLevel-input" name="changeSeaLevelValue">
+                    <button id="changeSeaLevel-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+
+                    
+                    <label for="surfaceToChange-select">Property to Edit:</label>
+                    <select id="surfaceToChange-select" name="surfaceToChangeValue">
+                        <option value="1">Bathymetry/Topography (m)</option>
+                        <option value="2">Bottom Friction</option>
+                        <option value="3">Passive Tracer Sources</option>
+                        <option value="4">Ocean Surface Elevation</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="changeType-select">Change Property Continuously or Set to Specific Value:</label>
+                    <br />
+                    <select id="changeType-select" name="changeTypeValue">
+                        <option value="1">Increase/Decrease on Click</option>
+                        <option value="2">Set to Value on Click</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="changeAmplitude-input">Amount of Property to Change-on-Click / Value to Set on Click:</label>
+                    <br />
+                    <input type="number" id="changeAmplitude-input" name="changeAmplitudeValue">
+                    <button id="changeAmplitude-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="changeRadius-input">Lengthscale (m) of Change-on-Click :</label>
+                    <br />
+                    <input type="number" id="changeRadius-input" name="changeRadiusValue">
+                    <button id="changeRadius-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                </div>
+
+            </div>            
+
+            <div id="boundary-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Modify Boundary Conditions </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+                
+                    <div id="incident-wave-block">
+                    
+                    <label for="incident_wave_type-select">Incident Wave Type: </label>
+                    <select id="incident_wave_type-select" name="incident_wave_typeValue">
+                        <option value="0">Sine Wave (single harmonic)</option>
+                        <option value="1">TMA Spectrum</option>
+                        <option value="2">*Transient Pulse (4 waves)</option>
+                        <option value="3">*Solitary Wave</option>
+                        <option value="-1">Custom Spectrum from loaded file</option>
+                        <option value="5">*Time Series from loaded file</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="incident_wave_H-input">Height (m) of Sine Wave / Pulse / Solitary Wave, or Significant Wave Height of Spectrum:</label>
+                    <br />
+                    <input type="number" id="incident_wave_H-input" name="incident_wave_HValue">
+                    <button id="incident_wave_H-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="incident_wave_T-input">Period (sec) of Sine Wave / Pulse, or Peak Period of Spectrum [not used for Solitary Wave]:</label>
+                    <br />
+                    <input type="number" id="incident_wave_T-input" name="incident_wave_TValue">
+                    <button id="incident_wave_T-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="incident_wave_direction-input">Wave Direction (deg, 0=from west, 90=from south, 180=from east, -90/270=from north):</label>
+                    <br />
+                    <input type="number" id="incident_wave_direction-input" name="incident_wave_direction">
+                    <button id="incident_wave_direction-button" type="button">Update</button>
+                    <br />
+                    <br />
+                    </div>
+
+                
+                    <label for="west_boundary_type-select">West Boundary Type: </label>
+                    <select id="west_boundary_type-select" name="west_boundary_typeValue">
+                        <option value="0">Solid Wall</option>
+                        <option value="1">Sponge Layer</option>
+                        <option value="2">Incident Waves</option>
+                        <option value="3">*Periodic Boundary</option>
+                        
+                        <option value="5">Time Series from loaded file</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="east_boundary_type-select">East Boundary Type: </label>
+                    <select id="east_boundary_type-select" name="east_boundary_typeValue">
+                        <option value="0">Solid Wall</option>
+                        <option value="1">Sponge Layer</option>
+                        <option value="2">Incident Waves</option>
+                        <option value="3">*Periodic Boundary</option>
+                        
+                        <option value="5">Time Series from loaded file</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="south_boundary_type-select">South Boundary Type: </label>
+                    <select id="south_boundary_type-select" name="south_boundary_typeValue">
+                        <option value="0">Solid Wall</option>
+                        <option value="1">Sponge Layer</option>
+                        <option value="2">Incident Waves</option>
+                        <option value="3">*Periodic Boundary</option>
+                        
+                        <option value="5">Time Series from loaded file</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="north_boundary_type-select">North Boundary Type: </label>
+                    <select id="north_boundary_type-select" name="north_boundary_typeValue">
+                        <option value="0">Solid Wall</option>
+                        <option value="1">Sponge Layer</option>
+                        <option value="2">Incident Waves</option>
+                        <option value="3">*Periodic Boundary</option>
+                        
+                        <option value="5">Time Series from loaded file</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+
+                </div>
+
+            </div>
+
+
+            <div id="sediment-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Configure Sediment Transport Model </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+                    
+                    <label for="sedC1_d50-input">Sediment Class 1 D50 (mm):</label>
+                    <br />
+                    <input type="number" id="sedC1_d50-input" name="sedC1_d50Value">
+                    <button id="sedC1_d50-button" type="button">Update</button>
+                    <br />
+                    <br />
+                    
+                    <label for="sedC1_n-input">Sediment Class 1 porosity:</label>
+                    <br />
+                    <input type="number" id="sedC1_n-input" name="sedC1_nValue">
+                    <button id="sedC1_n-button" type="button">Update</button>
+                    <br />
+                    <br />      
+                    
+                    <label for="sedC1_denrat-input">Sediment Class 1 specific gravity:</label>
+                    <br />
+                    <input type="number" id="sedC1_denrat-input" name="sedC1_denratValue">
+                    <button id="sedC1_denrat-button" type="button">Update</button>
+                    <br />
+                    <br />                 
+                   
+                   <label for="sedC1_psi-input">Sediment Class 1 psi (erosion) parameter:</label>
+                   <br />
+                   <input type="number" id="sedC1_psi-input" name="sedC1_psiValue">
+                   <button id="sedC1_psi-button" type="button">Update</button>
+                   <br />
+                   <br />
+                   
+                   <label for="sedC1_criticalshields-input">Sediment Class 1 critical Shields #:</label>
+                   <br />
+                   <input type="number" id="sedC1_criticalshields-input" name="sedC1_criticalshieldsValue">
+                   <button id="sedC1_criticalshields-button" type="button">Update</button>
+                   <br />
+                   <br />
+
+                    
+                    <label for="useSedTransModel-select">Turn on/off Sediment Transport Model: </label>
+                    <br />
+                    <select id="useSedTransModel-select" name="changeTypeValue">
+                        <option value="0">No Sediment Transport</option>
+                        <option value="1">Include Sediment Transport</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+
+                </div>
+
+            </div>
+
+
+            <div id="disturbance-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Add Impulsive Wave Source (Earthquake, Landslide) </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+
+                    
+                    <label for="disturbanceType-select">Wave Disturbance to Add:</label>
+                    <select id="disturbanceType-select" name="disturbanceType">
+                        <option value="1">Solitary Wave</option>
+                        <option value="2">*Earthquake</option>
+                        <option value="3">*Submerged Landslide</option>
+                        <option value="4">Subaerial Landslide</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="disturbanceXpos-input">X-Coordinate of Source (m):</label>
+                    <br />
+                    <input type="number" id="disturbanceXpos-input" name="disturbanceXposValue">
+                    <button id="disturbanceXpos-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="disturbanceYpos-input">Y-Coordinate of Source (m):</label>
+                    <br />
+                    <input type="number" id="disturbanceYpos-input" name="disturbanceYposValue">
+                    <button id="disturbanceYpos-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="disturbanceCrestamp-input">Crest Amplitude / Earthquake Slip / Max Slide Thickness (m):</label>
+                    <br />
+                    <input type="number" id="disturbanceCrestamp-input" name="disturbanceCrestampValue">
+                    <button id="disturbanceCrestamp-button" type="button">Update</button>
+                    <br />
+                    <br />   
+ 
+                    
+                    <label for="disturbanceDir-input">Direction / Orientation / Strike of Source (deg CCW from E [-180 to 180]):</label>
+                    <br />
+                    <input type="number" id="disturbanceDir-input" name="disturbanceDirValue">
+                    <button id="disturbanceDir-button" type="button">Update</button>
+                    <br />
+                    <br />       
+ 
+                    
+                    <label for="disturbanceWidth-input">Characteristic Width of Source (m, not used for Solitary Wave):</label>
+                    <br />
+                    <input type="number" id="disturbanceWidth-input" name="disturbanceWidthValue">
+                    <button id="disturbanceWidth-button" type="button">Update</button>
+                    <br />
+                    <br />       
+ 
+                    
+                    <label for="disturbanceLength-input">Characteristic Length of Source (m, not used for Solitary Wave):</label>
+                    <br />
+                    <input type="number" id="disturbanceLength-input" name="disturbanceLengthValue">
+                    <button id="disturbanceLength-button" type="button">Update</button>
+                    <br />
+                    <br />       
+ 
+                    
+                    <label for="disturbanceRake-input">Rake of Source (deg, only used for Earthquake):</label>
+                    <br />
+                    <input type="number" id="disturbanceRake-input" name="disturbanceRakeValue">
+                    <button id="disturbanceRake-button" type="button">Update</button>
+                    <br />
+                    <br />       
+ 
+                    
+                    <label for="disturbanceDip-input">Dip of Source (deg, only used for Earthquake):</label>
+                    <br />
+                    <input type="number" id="disturbanceDip-input" name="disturbanceDipValue">
+                    <button id="disturbanceDip-button" type="button">Update</button>
+                    <br />
+                    <br />    
+                    
+                    <div id="slidevolume-container" class="flex-container">
+                        
+                    </div>
+                    <br />
+                    <br />    
+
+                    
+                    <button id="disturbance-button">Add Disturbance</button>
+                    <br />
+                    <br />
+
+                </div>
+
+            </div>            
+
+
+            <div id="timeseries-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Plot Time Series </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+
+                    
+                    <label for="NumberOfTimeSeries-select">Total Number of Time Series:</label>
+                    <select id="NumberOfTimeSeries-select" name="NumberOfTimeSeriesValue">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                        <option value="13">13</option>
+                        <option value="14">14</option>
+                        <option value="15">15</option>
+                    </select>
+                    <br />
+                    <br />
+                    
+                    
+                    <label for="maxdurationTimeSeries-input">Duration of Time Series to Plot & Save (sec) :</label>
+                    <br />
+                    <input type="number" id="maxdurationTimeSeries-input" name="maxdurationTimeSeriesValue">
+                    <button id="maxdurationTimeSeries-button" type="button">Update</button>
+                    <br />
+                    <html4f>
+                        Model will save time series data once this duration is reached; a new data file will be generated every instance that the duration is reached (plot time reaches the duration). Data files will be located in your browser's default Downloads directory.
+                    </html4f>
+                    <br />
+                    <br />
+
+                    
+                    <label for="changethisTimeSeries-select">Time Series Location to Update:</label>
+                    <select id="changethisTimeSeries-select" name="changethisTimeSeriesValue">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                        <option value="13">13</option>
+                        <option value="14">14</option>
+                        <option value="15">15</option>
+                    </select>
+                    <br />
+                    <br />
+                    
+                    <html4f>
+                        Right-click on time series location (in Design Mode) or input coordinates below</a>
+                    </html4f> 
+                    <br />
+                    <br />
+
+                    
+                    <label for="changeXTimeSeries-input">New Time Series x-location (m) :</label>
+                    <br />
+                    <input type="number" id="changeXTimeSeries-input" name="changeXTimeSeriesValue">
+                    <button id="changeXTimeSeries-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="changeYTimeSeries-input">New Time Series y-location (m) :</label>
+                    <br />
+                    <input type="number" id="changeYTimeSeries-input" name="changeYTimeSeriesValue">
+                    <button id="changeYTimeSeries-button" type="button">Update</button>
+                    <br />
+                    <br />
+  
+                    <div id="timeserieslocs-container" class="flex-container">
+                        
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div id="analysis-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Analysis and Statistics </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+
+                    
+                    <button id="save-baseline-texture-btn">Store Baseline Wave Height Surface in Memory</button>
+                    <br />
+                    <br />
+
+                    
+                    <button id="reset-mean-texture-btn">Reset Mean & Max Surfaces</button>
+                    <br />
+                    <br />
+
+                    
+                    <button id="reset-waveheight-texture-btn">Reset Wave Height Surface</button>
+                    <br />
+                    <br />
+  
+                </div>
+
+            </div>
+            
+
+            <div id="animations-container" class="custom-window">
+                <div class="window-header">
+                    <span><center>Outputs: Animations & Images</center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+                    <html4f> Files saved below will be located in your browser's default Downloads directory</html4f>
+                    <br />
+                    <br />
+                    
+                    <button id="downloadJPG-button">Download Current Simulation Image (JPG)</button>
+                    <br />
+                    <br />
+                    <html4f>
+                    For long duration movies, it is recommended to use various screen capture options, such as the
+                    "Snipping Tool" in Windows.  Limitations of working within the browser / js environment make storing
+                    many frames and generating large animations challenging.  The options below will allow the user to make short animated gifs (up to ~100 frames)
+                    and to save up to 256 jpeg images.  Note that you can have only one of these operations ongoing at a time.
+                    </html4f>
+                    <br />
+                    <br />
+                    <html4f>
+                    Animated gif Options:
+                    </html4f>
+                    <br />
+
+                    
+                    <label for="AnimGif_dt-input">Time between frames (sec) :</label>
+                    <br />
+                    <input type="number" id="AnimGif_dt-input" name="AnimGif_dtValue">
+                    <button id="AnimGif_dt-button" type="button">Update</button>
+                    <br />
+                    <br />
+                    
+                    <html4f>
+                    Click the button below to start the creation of the animation.  See the console for messages about the 
+                    progress of the file generation.
+                    </html4f>
+                    <br />
+                    <button id="createGIF-button">Create Animated gif</button>
+                    <br />
+                    <br />
+
+                    <html4f>
+                    JPEG Time Stack Options:
+                    </html4f>
+                    <br />
+
+                    
+                    <label for="JPEGstack_dt-input">Time between jpeg images (sec) :</label>
+                    <br />
+                    <input type="number" id="JPEGstack_dt-input" name="JPEGstack_dtValue">
+                    <button id="JPEGstack_dt-button" type="button">Update</button>
+                    <br />
+                    <br />
+                    
+                    <label for="JPEGstack_frames-input">Number of images to save (max: 256) :</label>
+                    <br />
+                    <input type="number" id="JPEGstack_frames-input" name="JPEGstack_framesValue">
+                    <button id="JPEGstack_frames-button" type="button">Update</button>
+                    <br />
+                    <br />
+                    
+                    <html4f>
+                    Click the button below to start the storage of the jpeg images in memory.  Once all of the images
+                    are stored, they will be saved to file.  See the console for progress messages.
+                    </html4f>
+                    <br />
+                    <button id="createJPGstack-button">Create JPEG stack</button>
+                    <br />
+                    <br />
+
+                </div>
+
+            </div>
+
+
+            <div id="downloads-container" class="custom-window">
+                <div class="window-header">
+                    <span><center> Output: Raw Model Data </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+
+                    <html4f>-------------------------</html4f>
+                    <br />
+                    <html4f> Files saved below will be located in your browser's default Downloads directory</html4f>
+                    <br />
+                    <br />
+                    
+                    <button id="download-button">Download Simulation Parameters JSON file</button>
+                    <br />
+                    <br />
+                    <br />
+                    <html4f> Write Single 2D Surface Options: </html4f>
+                    <br />
+                    
+                    <label for="which_surface_to_write-select">Property to Write to File:</label>
+                    <select id="which_surface_to_write-select" name="which_surface_to_writeValue">
+                        <option value="0">Free Surface Elevation (m)</option>
+                        <option value="1">X-Dir Fluid Flux [E-W] (m^2/s)</option>
+                        <option value="2">Y-Dir Fluid Flux [N-S] (m^2/s)</option>
+                        <option value="3">Turbulent Eddy Viscosity (m^2/s)</option>
+                        <option value="4">Foam / Tracer Concentration</option>
+                        <option value="5">Bathymetry/Topography (m)</option>
+                        <option value="6">Bottom Friction Map </option>
+                        <option value="7">Design Component Map </option>
+                        <option value="8">RMS Wave Height (m)</option>
+                        <option value="9">Significant Wave Height (m)</option>
+                        <option value="10">Max Free Surface Elev (m)</option>
+                        <option value="11">Mean Free Surface Elev (m)</option>
+                        <option value="12">Mean Fluid Flux [E-W] (m^2/s)</option>
+                        <option value="13">Mean Fluid Flux [N-S] (m^2/s)</option>
+                    </select>
+                    <br />
+                    <br />                    
+                    <button id="downloadSingleSurface-button">Download Single 2D Surface Data (binary) </button>
+                    <br />
+                    <br />
+                    <br />
+                    <html4f> Time Stacks of 2D Surface Data Write Options: </html4f>
+                    <br />
+                    
+                    <label for="dt_writesurface-input">Time interval to write surface data (sec) :</label>
+                    <br />
+                    <input type="number" id="dt_writesurface-input" name="dt_writesurfaceValue">
+                    <button id="dt_writesurface-button" type="button">Update</button>
+                    <br />
+                    <br />
+                    
+                    <label for="write_eta-select">Write free surface elevation to file:</label>
+                    <select id="write_eta-select" name="write_eta">
+                        <option value="1">Yes</option>
+                        <option value="0">No</option>
+                    </select>
+                    <br />
+                    <br /> 
+                    
+                    <label for="write_P-select">Write x-direction flux (HU) to file:</label>
+                    <select id="write_P-select" name="write_P">
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                    <br />
+                    <br />   
+                    
+                    <label for="write_Q-select">Write y-direction flux (HV) to file:</label>
+                    <select id="write_Q-select" name="write_Q">
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                    <br />
+                    <br />     
+                    
+                    <label for="write_turb-select">Write turbulent (breaking and mixing) eddy viscosity to file:</label>
+                    <select id="write_turb-select" name="write_turb">
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                    <br />
+                    <br />                     
+            
+                    
+                    <html4f>
+                    Click the button below to start the writing of 2D surface data to files.
+                    Data will be written in raw binary for surface data, and ASCII for time and coordinate data.
+                    You can use this <a href="/scripts/load_WebGPUCeleris_output.m">example Matlab script</a> to plot the data.   
+                    Note that writing data to files will slow the simulation, and will tend to make the 
+                    user interface sluggish; when writing data files frequently (>10 writes per wave period), no to minimal interaction with the simulation
+                    is recommended. See the console for progress messages.
+                    </html4f>
+                    <br />
+                    <button id="start2Dwrite-button">Start Writing 2D Data to File</button>
+                    <br />
+                    <br />
+                    <button id="stop2Dwrite-button">Stop Writing 2D Data to File</button>
+                    <br />
+                    <br />
+
+                    <html4f> Nested Grid Boundary Time Series Output Options: </html4f>
+                    <br />
+                    <html4f>
+                    Define a rectangle using 0-based lower-left and upper-right grid indices. The four rectangle edges
+                    will be saved as eta/hu/hv time-series boundary files for one-way nested grids.
+                    </html4f>
+                    <br />
+                    <html4f>
+                    These controls edit the legacy/first rectangle. Additional rectangles can be supplied in config.json
+                    with nestedGridOutput_rectangles; default output prefixes are gridD, gridD2, gridD3, etc.
+                    </html4f>
+                    <br />
+                    <label for="nestedGridOutput_i0-input">Lower-left i-index:</label>
+                    <input type="number" id="nestedGridOutput_i0-input" name="nestedGridOutput_i0Value" min="0" step="1">
+                    <button id="nestedGridOutput_i0-button" type="button">Update</button>
+                    <br />
+                    <label for="nestedGridOutput_j0-input">Lower-left j-index:</label>
+                    <input type="number" id="nestedGridOutput_j0-input" name="nestedGridOutput_j0Value" min="0" step="1">
+                    <button id="nestedGridOutput_j0-button" type="button">Update</button>
+                    <br />
+                    <label for="nestedGridOutput_i1-input">Upper-right i-index:</label>
+                    <input type="number" id="nestedGridOutput_i1-input" name="nestedGridOutput_i1Value" min="0" step="1">
+                    <button id="nestedGridOutput_i1-button" type="button">Update</button>
+                    <br />
+                    <label for="nestedGridOutput_j1-input">Upper-right j-index:</label>
+                    <input type="number" id="nestedGridOutput_j1-input" name="nestedGridOutput_j1Value" min="0" step="1">
+                    <button id="nestedGridOutput_j1-button" type="button">Update</button>
+                    <br />
+                    <label for="nestedGridOutput_start_time-input">Start output time (sec):</label>
+                    <input type="number" id="nestedGridOutput_start_time-input" name="nestedGridOutput_start_timeValue">
+                    <button id="nestedGridOutput_start_time-button" type="button">Update</button>
+                    <br />
+                    <label for="nestedGridOutput_end_time-input">End output time (sec):</label>
+                    <input type="number" id="nestedGridOutput_end_time-input" name="nestedGridOutput_end_timeValue">
+                    <button id="nestedGridOutput_end_time-button" type="button">Update</button>
+                    <br />
+                    <label for="nestedGridOutput_dt-input">Output interval (sec):</label>
+                    <input type="number" id="nestedGridOutput_dt-input" name="nestedGridOutput_dtValue" min="0">
+                    <button id="nestedGridOutput_dt-button" type="button">Update</button>
+                    <br />
+                    <label for="nestedEtaWriteThreshold-input">Eta write threshold (m):</label>
+                    <input type="number" id="nestedEtaWriteThreshold-input" name="nestedEtaWriteThresholdValue" min="0" step="0.001">
+                    <button id="nestedEtaWriteThreshold-button" type="button">Update</button>
+                    <br />
+                    <button id="startNestedGridOutput-button">Start Nested Grid Boundary Time Series Output</button>
+                    <br />
+                    <br />
+
+                </div>
+
+            </div>
+            
+            
+            <div id="parameters-container" class="custom-window">
+                <div class="window-header">
+                    <span><center>  Modify Simulation Parameters  </center></span>
+                    <button class="minimize-button">-</button>
+                </div>
+                <div class="window-content"  data-default="minimized">
+
+                    
+                    <label for="nlsw-select">Simulation Type:</label>
+                    <select id="nlsw-select" name="nlswValue">
+                        <option value="0">NLSW</option>
+                        <option value="1">Boussinesq</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="Theta-input">Theta value for MinMod, ranges from 1.0 (most dissipative, upwind differences) to 2.0 (least dissipative, centered differences) [default: 2.0 w/ breaking model]:</label>
+                    <br />
+                    <input type="number" id="Theta-input" name="ThetaValue" min="0">
+                    <button id="theta-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="slide_mu-input">Landslide Coulomb friction coefficient mu (tan of friction angle; dynamic slide, disturbance type 6):</label>
+                    <br />
+                    <input type="number" id="slide_mu-input" name="slide_muValue" min="0" step="0.01">
+                    <button id="slide_mu-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="slide_xi-input">Landslide Voellmy-Salm turbulent coefficient xi (m/s^2; 0 or less turns the turbulent term off):</label>
+                    <br />
+                    <input type="number" id="slide_xi-input" name="slide_xiValue">
+                    <button id="slide_xi-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="slide_delta-input">Landslide minimum thickness scale (m) [default 0.05]:</label>
+                    <br />
+                    <input type="number" id="slide_delta-input" name="slide_deltaValue" min="0" step="0.01">
+                    <button id="slide_delta-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="slide_vel_floor_frac-input">Landslide thin-film velocity floor, as a fraction of the minimum thickness (1.0 = legacy sticky films) [default 0.1]:</label>
+                    <br />
+                    <input type="number" id="slide_vel_floor_frac-input" name="slide_vel_floor_fracValue" min="0" step="0.05">
+                    <button id="slide_vel_floor_frac-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="slide_slope_corr-input">Landslide slope correction (0 = none, plain mu*g; 1 = cos(theta) on friction only; 2 = full: cos^2(theta) on gravity/pressure/celerity plus cos(theta) friction) [default 1]:</label>
+                    <br />
+                    <input type="number" id="slide_slope_corr-input" name="slide_slope_corrValue" min="0" max="2" step="1">
+                    <button id="slide_slope_corr-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_pore_fract-input">Landslide initial pore pressure fraction of lithostatic (0 = dry friction) [default 0]:</label>
+                    <br />
+                    <input type="number" id="slide_pore_fract-input" name="slide_pore_fractValue" min="0" max="1" step="0.05">
+                    <button id="slide_pore_fract-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_pore_diff-input">Landslide pore pressure diffusion coefficient D (m^2/s) [default 0]:</label>
+                    <br />
+                    <input type="number" id="slide_pore_diff-input" name="slide_pore_diffValue" min="0" step="0.01">
+                    <button id="slide_pore_diff-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_pore_mode-input">Pore diffusivity mode (0 = direct D input; 1 = compute D from d32, concentration and temperature) [default 0]:</label>
+                    <br />
+                    <input type="number" id="slide_pore_mode-input" name="slide_pore_modeValue" min="0" max="1" step="1">
+                    <button id="slide_pore_mode-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_pore_d32-input">Sauter mean diameter d32 (mm), used in mode 1 [default 0.05]:</label>
+                    <br />
+                    <input type="number" id="slide_pore_d32-input" name="slide_pore_d32Value" min="0" step="0.01">
+                    <button id="slide_pore_d32-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_pore_conc-input">Slide solid volume fraction, used in mode 1 [default 0.4]:</label>
+                    <br />
+                    <input type="number" id="slide_pore_conc-input" name="slide_pore_concValue" min="0.05" max="0.65" step="0.05">
+                    <button id="slide_pore_conc-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_pore_T-input">Flow temperature (K), sets gas viscosity in mode 1 [default 300]:</label>
+                    <br />
+                    <input type="number" id="slide_pore_T-input" name="slide_pore_TValue" min="200" max="1500" step="10">
+                    <button id="slide_pore_T-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_rho_s-input">Slide solid density (kg/m^3); with the solid volume fraction above it sets the bulk density and the water/slide buoyancy ratio (0 = use the legacy direct ratio) [default 0]:</label>
+                    <br />
+                    <input type="number" id="slide_rho_s-input" name="slide_rho_sValue" min="0" step="50">
+                    <button id="slide_rho_s-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_gas_loss-input">Gas-loss deflation as pore pressure escapes (0 = off, 1 = on; needs solid density set) [default 0]:</label>
+                    <br />
+                    <input type="number" id="slide_gas_loss-input" name="slide_gas_lossValue" min="0" max="1" step="1">
+                    <button id="slide_gas_loss-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="skip_dry_water-input">Skip the water solver on runs proven to stay dry (1 = on, 0 = off) [default 1]:</label>
+                    <br />
+                    <input type="number" id="skip_dry_water-input" name="skip_dry_waterValue" min="0" max="1" step="1">
+                    <button id="skip_dry_water-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_time_order-input">Slide time integration order (1 = Euler, 2 = SSP-RK2) [default 1]:</label>
+                    <br />
+                    <input type="number" id="slide_time_order-input" name="slide_time_orderValue" min="1" max="2" step="1">
+                    <button id="slide_time_order-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="slide_curvature-input">Curvature (centrifugal) term in friction and driving (0 = off, 1 = on) [default 0]:</label>
+                    <br />
+                    <input type="number" id="slide_curvature-input" name="slide_curvatureValue" min="0" max="1" step="1">
+                    <button id="slide_curvature-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="timeseries_autosave-input">Auto-download time series at every chart reset (0 = off, 1 = on) [default 0]:</label>
+                    <br />
+                    <input type="number" id="timeseries_autosave-input" name="timeseries_autosaveValue" min="0" max="1" step="1">
+                    <button id="timeseries_autosave-button" type="button">Update</button>
+                    <br />
+                    <button id="save_timeseries-button" type="button">Save Time Series to File Now</button>
+                    <br />
+                    
+                    <label for="slide_pore_packmax-input">Maximum solid packing for the gas-loss gate [default 0.64]:</label>
+                    <br />
+                    <input type="number" id="slide_pore_packmax-input" name="slide_pore_packmaxValue" min="0.4" max="0.8" step="0.01">
+                    <button id="slide_pore_packmax-button" type="button">Update</button>
+                    <br />
+                    
+                    <label for="dark_mode-select">Dark mode page theme:</label>
+                    <select id="dark_mode-select" name="dark_modeValue">
+                        <option value="0">Off</option>
+                        <option value="1">On</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="slide_rest_gate-input">Landslide rest-state mass-flux gate (1 = on, holds static piles exactly; 0 = off, plain central-upwind everywhere) [default 1]:</label>
+                    <br />
+                    <input type="number" id="slide_rest_gate-input" name="slide_rest_gateValue" min="0" max="1" step="1">
+                    <button id="slide_rest_gate-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="courant-input">Change Courant Number (0.1 or less for Explicit Scheme, 0.2 or less for Implicit Scheme):</label>
+                    <br />
+                    <input type="number" id="courant-input" name="courantValue" min="0">
+                    <button id="courant-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="isManning-select">Bottom Friction Model: </label>
+                    <select id="isManning-select" name="isManningValue">
+                        <option value="0">Quadratic Friction Drag</option>
+                        <option value="1">Mannings Equation</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="friction-input">Change Mannings n (typical value ~0.025) or Friction Factor (typical value ~0.002):</label>
+                    <br />
+                    <input type="number" id="friction-input" name="frictionValue" min="0">
+                    <button id="friction-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="useBreakingModel-select">Wave Breaking Model: </label>
+                    <select id="useBreakingModel-select" name="useBreakingModel">
+                        <option value="1">Breaking Eddy Viscosity Model</option>
+                        <option value="0">None; numerical dissipation only</option>
+                    </select>
+                    <br />
+                    <br />
+
+                    
+                    <label for="dzdt_I_coef-input">Threshold to Start Wave Breaking [Default: 0.5]:</label>
+                    <br />
+                    <input type="number" id="dzdt_I_coef-input" name="dzdt_I_coefValue" min="0">
+                    <button id="dzdt_I_coef-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="dzdt_F_coef-input">Threshold to End Wave Breaking [Default: 0.15]:</label>
+                    <br />
+                    <input type="number" id="dzdt_F_coef-input" name="dzdt_F_coefValue" min="0">
+                    <button id="dzdt_F_coef-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="T_star_coef-input">Breaking Transition Time Coefficient [Default: 5.0]:</label>
+                    <br />
+                    <input type="number" id="T_star_coef-input" name="T_star_coefValue" min="0">
+                    <button id="T_star_coef-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="delta_breaking-input">Breaking Eddy Viscosity Coefficient [Default: 2.0]:</label>
+                    <br />
+                    <input type="number" id="delta_breaking-input" name="delta_breakingValue" min="0">
+                    <button id="delta_breaking-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="whiteWaterDispersion-input">Turbulent Dispersion ([m^2/s]; for foam/scalar transport):</label>
+                    <br />
+                    <input type="number" id="whiteWaterDispersion-input" name="whiteWaterDispersionValue" min="0">
+                    <button id="whiteWaterDispersion-button" type="button">Update</button>
+                    <br />
+                    <br />
+
+                    
+                    <label for="whiteWaterDecayRate-input">Turbulence Decay Rate (1st Order Decay [1/s]; for foam/scalar transport):</label>
+                    <br />
+                    <input type="number" id="whiteWaterDecayRate-input" name="whiteWaterDecayRateValue" min="0">
+                    <button id="whiteWaterDecayRate-button" type="button">Update</button>
+                    <br />
+                    <br />       
+                     
+                    
+                    <label for="infiltrationRate-input">Dry Beach Infiltration Rate [m/s; Default: 0.001]]:</label>
+                    <br />
+                    <input type="number" id="infiltrationRate-input" name="infiltrationRateValue" min="0">
+                    <button id="infiltrationRate-button" type="button">Update</button>
+                    <br />
+                    <br />               
+
+                    
+                    <label for="render_step-input">Time Steps Between each Render Frame (1 or greater, 0 for auto-determine for max sim speed):</label>
+                    <br />
+                    <input type="number" id="render_step-input" name="render_stepValue" min="0">
+                    <button id="render_step-button" type="button">Update</button>
+                    <br />
+                    <br />
+                </div>
+
+            </div>
+            <br />
+            <span style="font-family: Cinzel, 'Space Grotesk', serif; font-weight: 600; font-size: 1.25em; letter-spacing: 0.06em;">Rhea-WebGPU</span> v1.0.0-beta: interactive GPU solver for concentrated and dilute pyroclastic density currents/turbidity currents, mudflows and lahars, floods, debris flows and landslides<br>
+            <span style="font-style: italic; opacity: 0.85;">πάντα ῥεῖ (everything flows)</span><br>
+            E.C.P. Breard, University of Edinburgh &middot; Rhea funded by UKRI-NERC-IRF and the Leverhulme Trust<br>
+            Copyright &copy; 2026 E. C. P. Breard &middot; Rhea-WebGPU additions, MIT licensed<br>
+            <br>
+            Built on Celeris-WebGPU v.2025.01.21<br>
+            Copyright Patrick Lynett 2024<br>
+            Developed with support from USACE ERDC, ONR, and the NSF<br>
+            <br />
+            <br />
+            <br />
+            <br />
+
+        </div>
+
+        <div id="verticalbar">
+            <br>
+            <div id="simstatus-container" class="flex-container">
+                
+            </div>
+
+
+            <div class="window-header">
+                <span><center>  Simulation Window  </center></span>
+                <button class="minimize-button">-</button>
+            </div>            
+            <div class="window-content">
+                <canvas id="webgpuCanvas"></canvas>
+                <div id="tooltip" style="position: absolute; display: none;"></div>
+                <div id="gridinfo-container" style="text-align: center; font-size: 13px; opacity: 0.85; margin-top: -14px; margin-bottom: 6px;">
+                    
+                </div>
+            </div>
+
+
+            <div class="window-header">
+                <span><center>  Time Series Plots  </center></span>
+                <button class="minimize-button">-</button>
+            </div>
+            <div class="window-content"  data-default="minimized">
+                <canvas id="timeseriesChart"></canvas>
+            </div>
+            
+
+            <div class="window-header">
+                <span><center>  Simulation Parameters  </center></span>
+                <button class="minimize-button">-</button>
+            </div>
+            <div  id="constants-container" class="window-content"  data-default="minimized">
+                
+            </div>
+            <br>
+            <br>
+        </div>
+
+        
+        <div id="consolebar">
+            <br>
+            <button id="load-example-simulation-btn" class="console-btn" title="Load the case and hold it at the start: the terrain, the source or the failure surface and the released mass are on screen, the parameters are the running ones, and an edit reloads it before anything moves">Load simulation</button>
+            <button id="run-example-simulation-btn" class="console-btn console-btn-primary" title="Load the case and let it go">Load and run</button>
+            <div id="run-example-current"></div>
+            <script>(function(){const t=document.getElementById("run_example-select"),e=document.getElementById("run-example-current");if(!t||!e)return;const n=function(){if(window.__caseLoading===!0)return;const o=t.options[t.selectedIndex];e.textContent=o?o.textContent.trim():"",e.title=e.textContent};t.addEventListener("change",n),n()})();</script>
+            <button id="pause-toggle-btn" class="console-btn">Pause simulation</button>
+            <button id="rewind-sim-btn" class="console-btn" title="Reload the case and hold it at the start, ready to run again">Rewind to start</button>
+            <button id="reset-sim-btn" class="console-btn console-btn-danger" title="Clears memory and reloads the simulator; needs a second click to confirm">Clear memory / reset</button>
+            <div class="console-controls" style="margin-top:12px;">
+                <label><input type="checkbox" id="pop_show-checkbox"> Show populated places (georeferenced runs)</label>
+                <input type="file" id="pop_file-input" accept=".csv" title="CSV with pop and UTM x,y columns" style="width:100%; font-size:11px;">
+                <label><input type="checkbox" id="outline_show-checkbox"> Show mapped deposit outline (georeferenced runs)</label>
+                <label><input type="checkbox" id="rings_show-checkbox"> Show distance rings from the vent (cases that carry them)</label>
+                <label><input type="checkbox" id="drape_show-checkbox"> Drape the satellite image on the ground (cases that carry one)</label>
+                <label><input type="checkbox" id="fast_mode-checkbox"> Prioritise speed over the picture (draws twice a second; for ensembles and long runs)</label>
+                <input type="file" id="outline_file-input" accept=".csv" title="CSV with UTM x,y columns, and an optional part column for several rings" style="width:100%; font-size:11px;">
+            </div>
+            <script>(function(){const n=document.getElementById("pause-toggle-btn"),s=document.getElementById("simPause-select");function r(i){const a=i&&typeof window.celerisArmed=="function"&&window.celerisArmed();n.textContent=a?"Start simulation":i?"Resume simulation":"Pause simulation",n.classList.toggle("console-btn-active",i&&!a),n.classList.toggle("console-btn-primary",a),n.dataset.paused=i?"1":"0"}n.addEventListener("click",function(){const i=typeof window.celerisPaused=="function"?window.celerisPaused():n.dataset.paused==="1";s.value=i?"-1":"1",s.dispatchEvent(new Event("change")),r(!i)}),s.addEventListener("change",function(){r(s.value==="1")}),setInterval(function(){typeof window.celerisPaused=="function"&&r(window.celerisPaused())},500),r(!1)})(),(function(){const n=document.getElementById("rewind-sim-btn"),s=document.getElementById("load-example-simulation-btn");!n||!s||n.addEventListener("click",function(){s.click()})})(),(function(){const n=document.getElementById("reset-sim-btn"),s=document.getElementById("refresh-button");if(!n||!s)return;const r="Clear memory / reset";let i=!1,a=null;function u(){i=!1,n.textContent=r,n.classList.remove("console-btn-danger-armed"),a&&(clearTimeout(a),a=null)}n.addEventListener("click",function(){if(!i){i=!0,n.textContent="Click again to confirm reset",n.classList.add("console-btn-danger-armed"),a=setTimeout(u,4e3);return}u(),s.click()}),n.addEventListener("mouseleave",function(){i&&u()})})(),(function(){let n=null,s=!1,r=!1;async function i(){if(typeof window.celerisRefreshOverlay=="function"){if(s){r=!0;return}s=!0;try{do r=!1,await window.celerisRefreshOverlay();while(r)}catch(t){console.log("legend repaint failed: "+t.message)}s=!1}}function a(t){const e=document.getElementById("webgpuCanvas"),o=window.__legendLayout;if(!e||!o||!o.boxes||t.target!==e)return null;const c=e.getBoundingClientRect();return c.width>2&&c.height>2&&o.canvas.w>0?{x:(t.clientX-c.left)*o.canvas.w/c.width,y:(t.clientY-c.top)*o.canvas.h/c.height,L:o,cv:e}:null}function u(t){const e=a(t);if(!e)return null;const c=document.getElementById("webgpuCanvas").getBoundingClientRect(),m=7*e.L.canvas.h/Math.max(c.height,1);for(const y of[]){const l=e.L.boxes[y];if(l&&e.x>=l.x-m&&e.x<=l.x+l.w+m&&e.y>=l.y-m&&e.y<=l.y+l.h+m)return{key:y,p:e}}return null}function d(t){t.preventDefault(),t.stopPropagation(),t.stopImmediatePropagation()}let f=0;document.addEventListener("pointerdown",function(t){if(t.button!==0)return;const e=u(t);e&&(n={key:e.key,x:e.p.x,y:e.p.y,dx:e.p.L[e.key].dx,dy:e.p.L[e.key].dy},f=Date.now()+1500,e.p.cv.style.cursor="grabbing",d(t))},!0);for(const t of["click","mousedown","mouseup","auxclick"])document.addEventListener(t,function(e){(Date.now()<f||u(e))&&((t==="click"||t==="auxclick")&&(f=0),d(e))},!0);document.addEventListener("pointermove",function(t){const e=document.getElementById("webgpuCanvas");if(!n){e&&t.target===e&&(e.style.cursor=u(t)?"grab":"");return}const o=window.__legendLayout,c=e?e.getBoundingClientRect():null;!o||!c||!(c.width>2)||(o[n.key].dx=n.dx+(t.clientX-c.left)*o.canvas.w/c.width-n.x,o[n.key].dy=n.dy+(t.clientY-c.top)*o.canvas.h/c.height-n.y,i(),d(t))},!0),document.addEventListener("pointerup",function(t){if(!n)return;n=null,f=Date.now()+1500;const e=document.getElementById("webgpuCanvas");if(e&&(e.style.cursor=""),i(),typeof window.celerisConstants=="function"){const o=window.celerisConstants();o&&(o.html_update=1)}d(t)},!0),document.addEventListener("dblclick",function(t){const e=u(t);e&&(e.p.L[e.key].dx=0,e.p.L[e.key].dy=0,i(),d(t))},!0)})();</script>
+
+            <div class="window-header">
+                <span><center>  Simulation Console  </center></span>
+                <button class="minimize-button">-</button>
+            </div>
+            <div  id="log-container" class="window-content"  data-default="maximized">
+                
+            </div>
+            
+            <div id="caseparams-host" hidden></div>
+            <details id="depvis-panel" style="margin-top:8px; border:1px solid var(--steel); border-radius:6px; padding:6px; background:var(--crater);">
+                <summary style="cursor:pointer; color:var(--ember); font-weight:600;">Deposit footprint display</summary>
+                <div style="font-size:13px; padding:4px 2px;">
+                    <label for="depvis-input">Show deposit where thicker than (m):</label>
+                    <input type="number" id="depvis-input" step="any" value="1e-6" style="width:7em;" /><br />
+                    <span style="opacity:0.75;">The translucent tan overlay marks everywhere the
+                    dilute current has deposited more than this, so the flow path
+                    stays visible after the current lifts off or thins out.</span>
+                </div>
+            </details>
+            <script>(function(){const e=document.getElementById("depvis-input");function t(){window.celerisSetDepvis&&window.celerisSetDepvis(parseFloat(e.value)||0)}e.addEventListener("change",t);let n=!1;e.addEventListener("change",function(){n=!0}),setInterval(function(){n||!window.celerisGetDepvis||(e.value=window.celerisGetDepvis())},1e3)})();</script>
+            <br>
+            <br>
+        </div>
+
+
+
+    </div>
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    
+
+
+        
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    
+    <div id="rhea-lock" style="position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(8,14,20,0.94);font:15px sans-serif;color:#eee;">
+<form id="rhea-lock-form" style="max-width:320px;width:90%;background:#1b2a3a;border:1px solid #3a5a7a;border-radius:8px;padding:18px;">
+<div style="font-weight:600;font-size:17px;margin-bottom:6px;">Rhea-WebGPU demo</div>
+<div style="opacity:0.85;margin-bottom:12px;">Scan the QR code from the talk, or enter the password.</div>
+<input id="rhea-lock-pw" type="password" autocomplete="off" autocapitalize="off" style="width:100%;box-sizing:border-box;padding:8px;font-size:16px;">
+<button type="submit" style="margin-top:10px;width:100%;padding:8px;font-size:15px;">Open</button>
+<div id="rhea-lock-msg" style="margin-top:8px;color:#f0a080;min-height:1.2em;"></div>
+</form>
+</div>
+<script>(function(){var c="rhea.demo.key",i=document.getElementById("rhea-lock"),a=document.getElementById("rhea-lock-msg"),d=!1,r=[];window.__rheaOnReady=function(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):r.push(e)},window.__rheaFlushReady=function(){var e=r;r=[];for(var t=0;t<e.length;t++)e[t]()};async function y(e){var t=new Uint8Array(await(await fetch("app.bin?v=202610161312")).arrayBuffer()),u=await crypto.subtle.importKey("raw",new TextEncoder().encode(e),"PBKDF2",!1,["deriveKey"]),m=await crypto.subtle.deriveKey({name:"PBKDF2",salt:t.slice(0,16),iterations:25e4,hash:"SHA-256"},u,{name:"AES-GCM",length:256},!1,["decrypt"]),h=await crypto.subtle.decrypt({name:"AES-GCM",iv:t.slice(16,28)},m,t.slice(28));try{sessionStorage.setItem(c,e)}catch{}var o=document.createElement("script");o.type="module",o.textContent=new TextDecoder().decode(h)+";window.__rheaFlushReady();",document.body.appendChild(o),d=!0,i.style.display="none"}async function s(e,t){if(d)return!0;try{return await y(e),!0}catch{return t||(a.textContent="That password does not open it."),!1}}var n=(location.hash.match(/[#&]k=([^&]+)/)||[])[1];n&&(n=decodeURIComponent(n),history.replaceState(null,"",location.pathname+location.search));var l=null;try{l=sessionStorage.getItem(c)}catch{}document.getElementById("rhea-lock-form").addEventListener("submit",function(e){e.preventDefault(),a.textContent="Opening...",s(document.getElementById("rhea-lock-pw").value,!1)}),(async function(){var e=n||l;e&&await s(e,!0)||(i.style.display="flex",e&&(a.textContent="That link no longer opens it. Ask for the current one."))})()})();</script>
+ 
+    
+</body>
+</html>
