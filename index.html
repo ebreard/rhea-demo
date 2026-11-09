@@ -123,6 +123,8 @@
         body[data-solver="rheamudflow"] #depvis-panel {
             display: none !important;
         }
+        
+        .mode-off { display: none !important; }
         body { font-family: "Space Grotesk", "Bahnschrift", "Segoe UI", system-ui, sans-serif; }
         
         
@@ -304,6 +306,9 @@
             width: 60%; 
             display: flex;
             flex-direction: column; 
+            
+            align-self: flex-start;
+            min-height: 100%;
         }
 
         #consolebar {
@@ -499,7 +504,7 @@
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  var msg = '';
+  var msg = '', note = '';
   try {
     if (!('gpu' in navigator)) {
       msg = 'This browser has no WebGPU, which the model needs. On Android that means Chrome 121 or later on Android 12 or later, '
@@ -520,9 +525,17 @@ document.addEventListener('DOMContentLoaded', async function () {
           msg = 'This graphics adapter (' + [info.vendor, info.architecture].filter(Boolean).join(' ') + ') offers less than the model needs: '
               + lacking.join(', ') + '.';
         }
+        // the dilute pass of the Kos case writes five storage textures in one stage; below that the module is left out
+        if (!(L.maxStorageTexturesPerShaderStage >= 5)) {
+          var mod = document.querySelector('#solver_mode-select option[value="turbidity"]');
+          if (mod) { mod.remove(); }
+          note = 'The Kos to Santorini case needs 5 storage textures per shader stage and this device offers '
+               + L.maxStorageTexturesPerShaderStage + ', so it is not listed.';
+        }
       }
     }
   } catch (e) { msg = 'WebGPU could not start here: ' + e.message; }
+  msg = [msg, note].filter(Boolean).join(' ');
   if (!msg) { return; }
   var d = document.createElement('div');
   d.textContent = msg;
@@ -541,7 +554,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 <div>
                     <h1>Rhea<span>-WebGPU</span></h1>
                     <p>Depth-averaged mass flows and waves on the GPU</p>
-                    <p class="masthead-note">Demo: choose a case, press <b>Load and run</b>, then tap the map to start a flow. It runs on this device's graphics chip and needs WebGPU: recent Chrome on Android, Safari on iOS 26 or later, or Chrome and Edge on a computer.</p>
+                    <p class="masthead-note">Demo: choose a case and press <b>Load and run</b>. At Fuego and in Langtang, tap the map to start a flow. The Kos to Santorini current starts by itself; open Time Series Plots under the map for its deposit at the four drill sites. It runs on this device's graphics chip and needs WebGPU: recent Chrome on Android, Safari on iOS 26 or later, or Chrome and Edge on a computer.</p>
                 </div>
             </div>
             <div id="examples-container" class="custom-window">
@@ -555,6 +568,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                          <select id="solver_mode-select">
                              <option value="pdc">Rhea-PDC (concentrated: dense granular flows)</option>
                             <option value="rheaflood">Rhea-Flood (floods and bulking flows)</option>
+                            <option value="turbidity">Rhea-Turbidity (submarine currents in seawater)</option>
 </select>
                          <br />
                          <br />
@@ -568,7 +582,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                          <select id="run_example-select" name="run_exampleValue">
                              
                          </select>
-                         <script>(async function(){const f=document.getElementById("solver_mode-select"),i=document.getElementById("run_example-select"),y=await new Promise(function(e){(function n(){window.__rheaExamplesReady?window.__rheaExamplesReady.then(e):setTimeout(n,20)})()}),l=document.getElementById("case_set-select"),b={},E={},c="showcase",m="*",C=y.filter(function(e){return e.listed}).sort(function(e,n){return e.menu-n.menu});for(const e of y)b[e.index]=e.solver,E[e.index]=e.set||c;for(const e of C){const n=document.createElement("option");n.value=String(e.index),n.textContent=e.title,i.appendChild(n)}const v=e=>b[parseInt(e,10)]||"celeris",S=e=>E[parseInt(e,10)]||c;function I(e){const n=[],o={};for(const t of C){if(t.solver!==e)continue;const s=t.set||c;s in o||(o[s]=0,n.push(s)),o[s]+=1}return n.sort(function(t,s){return(t===c?0:1)-(s===c?0:1)}),n.map(function(t){return{name:t,count:o[t]}})}function O(e,n){const o=I(e);l.innerHTML="";for(const t of o){const s=document.createElement("option");s.value=t.name,s.textContent=(t.name===c?"Showcase":t.name)+" ("+t.count+")",l.appendChild(s)}if(o.length>1){const t=document.createElement("option");t.value=m,t.textContent="All cases of this module ("+o.reduce(function(s,d){return s+d.count},0)+")",l.appendChild(t)}l.value=n&&(n===m||o.some(function(t){return t.name===n}))?n:c,l.disabled=o.length<=1}function p(e,n,o){return v(e)===n&&(o===m||S(e)===o)}function x(e,n){let o=null;for(const t of i.options){const s=p(t.value,e,n);t.hidden=!s,t.disabled=!s,s&&o===null&&(o=t.value)}return o}const _={"disturbance-container":"Not used by this solver. It runs the dynamic mass-flow layer, which this control cannot select; choosing one of its sources would switch that layer off."},u=Object.assign({},_,{"incident-wave-block":"Not used by this solver. Wave forcing drives the water solver only, and on ground that never gets wet Rhea skips that solver; choosing a wave type here starts it running again for no physical gain.","design-container":"Not used by this solver. The engineered components act on the water solver, which this mode does not run.","sediment-container":"Not used by this solver. The sediment model rides on the water solver, which this mode does not run."}),P=Object.assign({},u,{"incident-wave-block":"Not used by this solver. The current runs beneath a seawater ambient carried by the mass-flow layer itself, not by the water solver, so wave forcing drives nothing here."}),B={celeris:{},rheawave:_,pdc:u,pdcdilute:u,debris:u,rheamudflow:u,rheaflood:u,turbidity:P},T=["incident-wave-block","design-container","sediment-container","disturbance-container"];function R(e){const n=B[e]||{};for(const o of T){const t=document.getElementById(o);if(!t)continue;const s=t.classList.contains("custom-window"),d=s?t.querySelector(".window-content"):t;if(!d)continue;let r=d.querySelector(":scope > .solver-na-note");const w=s?t.querySelector(".window-header > span"):null;let a=w?w.querySelector(".solver-na-flag"):null;n[o]?(t.classList.add(s?"solver-na":"solver-na-block"),r||(r=document.createElement("div"),r.className="solver-na-note",d.insertBefore(r,d.firstChild)),r.textContent=n[o],r.hidden=!1,w&&!a&&(a=document.createElement("em"),a.className="solver-na-flag",a.textContent=" (not used by this solver)",w.appendChild(a)),a&&(a.hidden=!1)):(t.classList.remove("solver-na","solver-na-block"),r&&(r.hidden=!0),a&&(a.hidden=!0))}}let h=!1;function g(e){const n=f.value;R(n),document.body.dataset.solver=n,typeof window.celerisBuildCasePanel=="function"&&window.celerisBuildCasePanel(n);const o=v(i.value)===n&&!e?S(i.value):c;O(n,o);const t=l.value,s=x(n,t);s!==null&&(e||!p(i.value,n,t))&&(i.value=s,h=!0,i.dispatchEvent(new Event("change")),h=!1)}f.addEventListener("change",function(){g(!0)}),l.addEventListener("change",function(){const e=f.value,n=l.value,o=x(e,n);o!==null&&!p(i.value,e,n)&&(i.value=o,h=!0,i.dispatchEvent(new Event("change")),h=!1,window.celerisPreviewCase&&window.celerisPreviewCase(i.value))}),i.addEventListener("change",function(){h||(f.value=v(i.value),g(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value))});const N=function(e){return e!==null&&[...i.options].some(function(n){return n.value===e})},L=new URLSearchParams(window.location.search).get("ex"),A=N(L)?L:"373";N(A)&&(i.value=A),f.value=v(i.value),g(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value)})();</script>
+                         <script>(async function(){const d=document.getElementById("solver_mode-select"),i=document.getElementById("run_example-select"),b=await new Promise(function(t){(function e(){window.__rheaExamplesReady?window.__rheaExamplesReady.then(t):setTimeout(e,20)})()}),l=document.getElementById("case_set-select"),y={},E={},r="showcase",m="*",C=b.filter(function(t){return t.listed}).sort(function(t,e){return t.menu-e.menu});for(const t of b)y[t.index]=t.solver,E[t.index]=t.set||r;for(const t of C){const e=document.createElement("option");e.value=String(t.index),e.textContent=t.title,i.appendChild(e)}const h=t=>y[parseInt(t,10)]||"celeris",x=t=>E[parseInt(t,10)]||r;function I(t){const e=[],o={};for(const n of C){if(n.solver!==t)continue;const s=n.set||r;s in o||(o[s]=0,e.push(s)),o[s]+=1}return e.sort(function(n,s){return(n===r?0:1)-(s===r?0:1)}),e.map(function(n){return{name:n,count:o[n]}})}function B(t,e){const o=I(t);l.innerHTML="";for(const n of o){const s=document.createElement("option");s.value=n.name,s.textContent=(n.name===r?"Showcase":n.name)+" ("+n.count+")",l.appendChild(s)}if(o.length>1){const n=document.createElement("option");n.value=m,n.textContent="All cases of this module ("+o.reduce(function(s,f){return s+f.count},0)+")",l.appendChild(n)}l.value=e&&(e===m||o.some(function(n){return n.name===e}))?e:r,l.disabled=o.length<=1}function g(t,e,o){return h(t)===e&&(o===m||x(t)===o)}function S(t,e){let o=null;for(const n of i.options){const s=g(n.value,t,e);n.hidden=!s,n.disabled=!s,s&&o===null&&(o=n.value)}return o}const A={"disturbance-container":"Not used by this solver. It runs the dynamic mass-flow layer, which this control cannot select; choosing one of its sources would switch that layer off."},u=Object.assign({},A,{"incident-wave-block":"Not used by this solver. Wave forcing drives the water solver only, and on ground that never gets wet Rhea skips that solver; choosing a wave type here starts it running again for no physical gain.","design-container":"Not used by this solver. The engineered components act on the water solver, which this mode does not run.","sediment-container":"Not used by this solver. The sediment model rides on the water solver, which this mode does not run."}),T=Object.assign({},u,{"incident-wave-block":"Not used by this solver. The current runs beneath a seawater ambient carried by the mass-flow layer itself, not by the water solver, so wave forcing drives nothing here."}),q={celeris:{},rheawave:A,pdc:u,pdcdilute:u,debris:u,rheamudflow:u,rheaflood:u,turbidity:T},R=["incident-wave-block","design-container","sediment-container","disturbance-container"];function D(t){const e=q[t]||{};for(const o of R){const n=document.getElementById(o);if(!n)continue;const s=n.classList.contains("custom-window"),f=s?n.querySelector(".window-content"):n;if(!f)continue;let c=f.querySelector(":scope > .solver-na-note");const w=s?n.querySelector(".window-header > span"):null;let a=w?w.querySelector(".solver-na-flag"):null;e[o]?(n.classList.add(s?"solver-na":"solver-na-block"),c||(c=document.createElement("div"),c.className="solver-na-note",f.insertBefore(c,f.firstChild)),c.textContent=e[o],c.hidden=!1,w&&!a&&(a=document.createElement("em"),a.className="solver-na-flag",a.textContent=" (not used by this solver)",w.appendChild(a)),a&&(a.hidden=!1)):(n.classList.remove("solver-na","solver-na-block"),c&&(c.hidden=!0),a&&(a.hidden=!0))}}const M={nowater:["pdc","pdcdilute","debris","rheaflood","rheamudflow","turbidity"],dense:["pdc","debris","rheaflood","rheamudflow"],dilute:["pdcdilute","turbidity"]};function O(t,e){return t.split(/\s+/).some(function(o){return o===e||(M[o]||[]).indexOf(e)>=0})}function N(t){for(const e of document.querySelectorAll("[data-hide-in]")){const o=O(e.getAttribute("data-hide-in"),t);e.tagName==="OPTION"?(e.hidden=o,e.disabled=o):e.classList.toggle("mode-off",o)}for(const e of document.querySelectorAll("[data-alt-in]"))e.hasAttribute("data-orig-text")||e.setAttribute("data-orig-text",e.textContent),e.textContent=O(e.getAttribute("data-alt-in"),t)?e.getAttribute("data-alt-text"):e.getAttribute("data-orig-text")}document.addEventListener("DOMContentLoaded",function(){document.body.dataset.solver&&N(document.body.dataset.solver)});let v=!1;function p(t){const e=d.value;D(e),document.body.dataset.solver=e,N(e),typeof window.celerisBuildCasePanel=="function"&&window.celerisBuildCasePanel(e);const o=h(i.value)===e&&!t?x(i.value):r;B(e,o);const n=l.value,s=S(e,n);s!==null&&(t||!g(i.value,e,n))&&(i.value=s,v=!0,i.dispatchEvent(new Event("change")),v=!1)}d.addEventListener("change",function(){p(!0),window.celerisPreviewCase&&h(i.value)===d.value&&window.celerisPreviewCase(i.value)}),l.addEventListener("change",function(){const t=d.value,e=l.value,o=S(t,e);o!==null&&!g(i.value,t,e)&&(i.value=o,v=!0,i.dispatchEvent(new Event("change")),v=!1,window.celerisPreviewCase&&window.celerisPreviewCase(i.value))}),i.addEventListener("change",function(){v||(d.value=h(i.value),p(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value))});const _=function(t){return t!==null&&[...i.options].some(function(e){return e.value===t})},L=new URLSearchParams(window.location.search).get("ex"),P=_(L)?L:"373";_(P)&&(i.value=P),d.value=h(i.value),p(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value)})();</script>
                 </div>
             </div>
 
@@ -578,6 +592,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <button class="minimize-button">-</button>
                 </div>
                 <div class="window-content" data-default="minimized">
+                    <div data-hide-in="nowater">
                     <html4f>
                         <b>Questions/Problems/Requests </b> - use the <a href="https://celeris.discourse.group/categories" target="_blank" rel="noopener noreferrer">Users Forum</a>
                         <br />
@@ -590,6 +605,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     </html4f>
                     <br />
                     <br />
+                    </div>
                     <html4f>
                         ---------------------- <br>
                         Upload Custom Configuration Files here:</a>
@@ -624,6 +640,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         </div>
                         <div id="dem-notes" hidden></div>
                         <br />
+                        <div data-hide-in="nowater">
                         <input type="file" id="waveFile" accept="application/txt" style="display: none;" />
                         <label for="waveFile" class="custom-file-upload-button">
                             Load Wave [amp,period,dir] Data File [Optional]
@@ -642,12 +659,16 @@ document.addEventListener('DOMContentLoaded', async function () {
                         </label>
                         <br />
                         <br />
+                        </div>
+                        <div data-hide-in="dense">
                         <input type="file" id="hardbottomFile" accept="application/txt" style="display: none;" />
                         <label for="hardbottomFile" class="custom-file-upload-button">
                             Load Hard (non-erodible) Bottom Elevation Data File [Optional]
                         </label>
                         <br />
                         <br />
+                        </div>
+                        <div data-hide-in="nowater">
                         <html4f>
                             Boundary time-series files can be loaded for boundary type 5 and should contain station locations plus time, eta, hu, and hv columns.  
                             See the Users Forum for details on how to construct these OPTIONAL boundary time series files.
@@ -672,7 +693,11 @@ document.addEventListener('DOMContentLoaded', async function () {
                             </label>
                         </div>
                         <br />
-                        <html4f>
+                        </div>
+                        <html4f data-hide-in="celeris rheawave landslide">
+                            Load a satellite or aerial image that covers exactly the same area as the loaded DEM, or the overlay will not be spatially matched.
+                        </html4f>
+                        <html4f data-hide-in="nowater">
                             For image overlay, you have two choices.  
                             If you have a high-resolution satellite or aerial image, you can load that file below.  
                             Note that this image must cover the exact area as the loaded bathy/topo, or the overlay will not be spatially matched.  
@@ -730,34 +755,34 @@ document.addEventListener('DOMContentLoaded', async function () {
                     
                     <label for="surfaceToPlot-select">Property to Plot:</label>
                     <select id="surfaceToPlot-select" name="surfaceToPlotValue">
-                        <option value="0">Free Surface Elevation (m)</option>
+                        <option value="0" data-hide-in="nowater">Free Surface Elevation (m)</option>
                         <option value="6">Bathymetry/Topography (m)</option>
-                        <option value="15">Bottom Friction Map </option>
-                        <option value="1">Fluid Speed (m/s)</option>
-                        <option value="2">East-West (x) Velocity (m/s)</option>
-                        <option value="3">North-South (y) Velocity (m/s)</option>
-                        <option value="4">Vertical Vorticity (1/s)</option>
-                        <option value="23">Mean |Vertical Vorticity| (1/s)</option>
-                        <option value="5">Foam / Tracer Concentration</option>
-                        <option value="11">Mean Foam / Tracer Concentration</option>
-                        <option value="16">Max Free Surface Elev (m)</option>
-                        <option value="7">Mean Free Surface Elev (m)</option>
-                        <option value="8">Mean Fluid Speed [Magn] (m/s)</option>
-                        <option value="9">Mean Fluid Speed [E-W] (m/s)</option>
-                        <option value="10">Mean Fluid Speed [N-S] (m/s)</option>
-                        <option value="12">RMS Wave Height (m)</option>
-                        <option value="13">Significant Wave Height (m)</option>
-                        <option value="14">Difference from Baseline Hs (m) </option>
-                        <option value="21">Depth Change due to Sed Transport </option>
+                        <option value="15" data-hide-in="nowater">Bottom Friction Map </option>
+                        <option value="1" data-hide-in="nowater">Fluid Speed (m/s)</option>
+                        <option value="2" data-hide-in="nowater">East-West (x) Velocity (m/s)</option>
+                        <option value="3" data-hide-in="nowater">North-South (y) Velocity (m/s)</option>
+                        <option value="4" data-hide-in="nowater">Vertical Vorticity (1/s)</option>
+                        <option value="23" data-hide-in="nowater">Mean |Vertical Vorticity| (1/s)</option>
+                        <option value="5" data-hide-in="nowater">Foam / Tracer Concentration</option>
+                        <option value="11" data-hide-in="nowater">Mean Foam / Tracer Concentration</option>
+                        <option value="16" data-hide-in="nowater">Max Free Surface Elev (m)</option>
+                        <option value="7" data-hide-in="nowater">Mean Free Surface Elev (m)</option>
+                        <option value="8" data-hide-in="nowater">Mean Fluid Speed [Magn] (m/s)</option>
+                        <option value="9" data-hide-in="nowater">Mean Fluid Speed [E-W] (m/s)</option>
+                        <option value="10" data-hide-in="nowater">Mean Fluid Speed [N-S] (m/s)</option>
+                        <option value="12" data-hide-in="nowater">RMS Wave Height (m)</option>
+                        <option value="13" data-hide-in="nowater">Significant Wave Height (m)</option>
+                        <option value="14" data-hide-in="nowater">Difference from Baseline Hs (m) </option>
+                        <option value="21" data-hide-in="nowater">Depth Change due to Sed Transport </option>
                         <option value="24">Flow thickness (m)</option>
                         <option value="25">Flow speed (m/s)</option>
                         <option value="26">Basal pore pressure ratio (-)</option>
                         <option value="27">Solid volume fraction (-)</option>
                         <option value="28">Landslide Temperature (K)</option>
-                        <option value="17">Sediment Class 1 Concentration </option>
-                        <option value="18">Sediment Class 1 Erosion Rate </option>
-                        <option value="19">Sediment Class 1 Available Depth </option>
-                        <option value="22">Design Component Map </option>
+                        <option value="17" data-hide-in="nowater">Sediment Class 1 Concentration </option>
+                        <option value="18" data-hide-in="nowater">Sediment Class 1 Erosion Rate </option>
+                        <option value="19" data-hide-in="nowater">Sediment Class 1 Available Depth </option>
+                        <option value="22" data-hide-in="nowater">Design Component Map </option>
                     </select>
                     <br />
                     <br />
@@ -795,6 +820,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <br />
                     <br />
 
+                    <div data-hide-in="nowater">
                     
                     <label for="showBreaking-select">Transport Overlays:</label>
                     <select id="showBreaking-select" name="showBreakingValue">
@@ -804,12 +830,13 @@ document.addEventListener('DOMContentLoaded', async function () {
                     </select>
                     <br />
                     <br />
+                    </div>
 
                     
-                    <label for="GoogleMapOverlay-select">Google Maps / Aerial Image Overlay:<br></label>
+                    <label for="GoogleMapOverlay-select"><span data-alt-in="nowater" data-alt-text="Aerial Image Overlay:">Google Maps / Aerial Image Overlay:</span><br></label>
                     <select id="GoogleMapOverlay-select" name="GoogleMapOverlayValue">
                         <option value="0">No Overlay</option>
-                        <option value="1">Include Google Maps Overlay</option>
+                        <option value="1" data-hide-in="nowater">Include Google Maps Overlay</option>
                         <option value="2">Include Satellite / Aerial Overlay</option>
                     </select>
                     <br />
@@ -839,7 +866,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 
                     
-                    <label for="ShowLogos-select">Show USACE & USC logos:<br></label>
+                    <label for="ShowLogos-select"><span data-alt-in="nowater" data-alt-text="Show logos:">Show USACE & USC logos:</span><br></label>
                     <select id="ShowLogos-select" name="ShowLogosValue">
                         <option value="0">Yes</option>
                         <option value="1">No</option>
@@ -1034,11 +1061,12 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             <div id="mods-container" class="custom-window">
                 <div class="window-header">
-                    <span><center> Modify Sea Level & Edit Bathy/Topo </center></span>
+                    <span><center><span data-alt-in="nowater" data-alt-text="Edit Bathy/Topo"> Modify Sea Level & Edit Bathy/Topo </span></center></span>
                     <button class="minimize-button">-</button>
                 </div>
                 <div class="window-content"  data-default="minimized">
 
+                    <div data-hide-in="nowater">
                     
                     <label for="changeSeaLevel-input">Change in stil water level (m of surge, tide, SLR):</label>
                     <br />
@@ -1046,15 +1074,16 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <button id="changeSeaLevel-button" type="button">Update</button>
                     <br />
                     <br />
+                    </div>
 
 
                     
                     <label for="surfaceToChange-select">Property to Edit:</label>
                     <select id="surfaceToChange-select" name="surfaceToChangeValue">
                         <option value="1">Bathymetry/Topography (m)</option>
-                        <option value="2">Bottom Friction</option>
-                        <option value="3">Passive Tracer Sources</option>
-                        <option value="4">Ocean Surface Elevation</option>
+                        <option value="2" data-hide-in="nowater">Bottom Friction</option>
+                        <option value="3" data-hide-in="nowater">Passive Tracer Sources</option>
+                        <option value="4" data-hide-in="nowater">Ocean Surface Elevation</option>
                     </select>
                     <br />
                     <br />
@@ -1089,7 +1118,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             </div>            
 
-            <div id="boundary-container" class="custom-window">
+            <div id="boundary-container" class="custom-window" data-hide-in="dilute">
                 <div class="window-header">
                     <span><center> Modify Boundary Conditions </center></span>
                     <button class="minimize-button">-</button>
@@ -1135,15 +1164,23 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <br />
                     </div>
 
+                    <div data-hide-in="celeris rheawave landslide">
+                    <html4f>
+                        Mass-flow modules read one thing here: a boundary set to Solid Wall reflects the flow when the case has slide_wall_bc on, and any other setting lets the flow leave the domain.
+                    </html4f>
+                    <br />
+                    <br />
+                    </div>
+
                 
                     <label for="west_boundary_type-select">West Boundary Type: </label>
                     <select id="west_boundary_type-select" name="west_boundary_typeValue">
                         <option value="0">Solid Wall</option>
-                        <option value="1">Sponge Layer</option>
-                        <option value="2">Incident Waves</option>
-                        <option value="3">*Periodic Boundary</option>
+                        <option value="1" data-alt-in="nowater" data-alt-text="Open (the flow leaves the domain)">Sponge Layer</option>
+                        <option value="2" data-hide-in="nowater">Incident Waves</option>
+                        <option value="3" data-hide-in="nowater">*Periodic Boundary</option>
                         
-                        <option value="5">Time Series from loaded file</option>
+                        <option value="5" data-hide-in="nowater">Time Series from loaded file</option>
                     </select>
                     <br />
                     <br />
@@ -1152,11 +1189,11 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <label for="east_boundary_type-select">East Boundary Type: </label>
                     <select id="east_boundary_type-select" name="east_boundary_typeValue">
                         <option value="0">Solid Wall</option>
-                        <option value="1">Sponge Layer</option>
-                        <option value="2">Incident Waves</option>
-                        <option value="3">*Periodic Boundary</option>
+                        <option value="1" data-alt-in="nowater" data-alt-text="Open (the flow leaves the domain)">Sponge Layer</option>
+                        <option value="2" data-hide-in="nowater">Incident Waves</option>
+                        <option value="3" data-hide-in="nowater">*Periodic Boundary</option>
                         
-                        <option value="5">Time Series from loaded file</option>
+                        <option value="5" data-hide-in="nowater">Time Series from loaded file</option>
                     </select>
                     <br />
                     <br />
@@ -1165,11 +1202,11 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <label for="south_boundary_type-select">South Boundary Type: </label>
                     <select id="south_boundary_type-select" name="south_boundary_typeValue">
                         <option value="0">Solid Wall</option>
-                        <option value="1">Sponge Layer</option>
-                        <option value="2">Incident Waves</option>
-                        <option value="3">*Periodic Boundary</option>
+                        <option value="1" data-alt-in="nowater" data-alt-text="Open (the flow leaves the domain)">Sponge Layer</option>
+                        <option value="2" data-hide-in="nowater">Incident Waves</option>
+                        <option value="3" data-hide-in="nowater">*Periodic Boundary</option>
                         
-                        <option value="5">Time Series from loaded file</option>
+                        <option value="5" data-hide-in="nowater">Time Series from loaded file</option>
                     </select>
                     <br />
                     <br />
@@ -1178,11 +1215,11 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <label for="north_boundary_type-select">North Boundary Type: </label>
                     <select id="north_boundary_type-select" name="north_boundary_typeValue">
                         <option value="0">Solid Wall</option>
-                        <option value="1">Sponge Layer</option>
-                        <option value="2">Incident Waves</option>
-                        <option value="3">*Periodic Boundary</option>
+                        <option value="1" data-alt-in="nowater" data-alt-text="Open (the flow leaves the domain)">Sponge Layer</option>
+                        <option value="2" data-hide-in="nowater">Incident Waves</option>
+                        <option value="3" data-hide-in="nowater">*Periodic Boundary</option>
                         
-                        <option value="5">Time Series from loaded file</option>
+                        <option value="5" data-hide-in="nowater">Time Series from loaded file</option>
                     </select>
                     <br />
                     <br />
@@ -1445,7 +1482,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             </div>
 
-            <div id="analysis-container" class="custom-window">
+            <div id="analysis-container" class="custom-window" data-hide-in="nowater">
                 <div class="window-header">
                     <span><center> Analysis and Statistics </center></span>
                     <button class="minimize-button">-</button>
@@ -1566,6 +1603,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <br />
                     <br />
                     <br />
+                    <div data-hide-in="nowater">
                     <html4f> Write Single 2D Surface Options: </html4f>
                     <br />
                     
@@ -1698,6 +1736,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <button id="startNestedGridOutput-button">Start Nested Grid Boundary Time Series Output</button>
                     <br />
                     <br />
+                    </div>
 
                 </div>
 
@@ -1711,6 +1750,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 </div>
                 <div class="window-content"  data-default="minimized">
 
+                    <div data-hide-in="nowater">
                     
                     <label for="nlsw-select">Simulation Type:</label>
                     <select id="nlsw-select" name="nlswValue">
@@ -1727,6 +1767,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <button id="theta-button" type="button">Update</button>
                     <br />
                     <br />
+
+                    </div>
 
                     
                     <label for="slide_mu-input">Landslide Coulomb friction coefficient mu (tan of friction angle; dynamic slide, disturbance type 6):</label>
@@ -1871,6 +1913,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <br />
                     <br />
 
+                    <div data-hide-in="nowater">
                     
                     <label for="isManning-select">Bottom Friction Model: </label>
                     <select id="isManning-select" name="isManningValue">
@@ -1953,6 +1996,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <br />
                     <br />               
 
+                    </div>
+
                     
                     <label for="render_step-input">Time Steps Between each Render Frame (1 or greater, 0 for auto-determine for max sim speed):</label>
                     <br />
@@ -2034,6 +2079,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 <input type="file" id="pop_file-input" accept=".csv" title="CSV with pop and UTM x,y columns" style="width:100%; font-size:11px;">
                 <label><input type="checkbox" id="outline_show-checkbox"> Show mapped deposit outline (georeferenced runs)</label>
                 <label><input type="checkbox" id="rings_show-checkbox"> Show distance rings from the vent (cases that carry them)</label>
+                <label><input type="checkbox" id="lines_black-checkbox"> Draw the map lines in black instead of white (distance rings, gauge pointers)</label>
                 <label><input type="checkbox" id="drape_show-checkbox"> Drape the satellite image on the ground (cases that carry one)</label>
                 <label><input type="checkbox" id="fast_mode-checkbox"> Prioritise speed over the picture (draws twice a second; for ensembles and long runs)</label>
                 <input type="file" id="outline_file-input" accept=".csv" title="CSV with UTM x,y columns, and an optional part column for several rings" style="width:100%; font-size:11px;">
@@ -2097,7 +2143,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 <div id="rhea-lock-msg" style="margin-top:8px;color:#f0a080;min-height:1.2em;"></div>
 </form>
 </div>
-<script>(function(){var c="rhea.demo.key",i=document.getElementById("rhea-lock"),a=document.getElementById("rhea-lock-msg"),d=!1,r=[];window.__rheaOnReady=function(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):r.push(e)},window.__rheaFlushReady=function(){var e=r;r=[];for(var t=0;t<e.length;t++)e[t]()};async function y(e){var t=new Uint8Array(await(await fetch("app.bin?v=202610170000")).arrayBuffer()),u=await crypto.subtle.importKey("raw",new TextEncoder().encode(e),"PBKDF2",!1,["deriveKey"]),m=await crypto.subtle.deriveKey({name:"PBKDF2",salt:t.slice(0,16),iterations:25e4,hash:"SHA-256"},u,{name:"AES-GCM",length:256},!1,["decrypt"]),h=await crypto.subtle.decrypt({name:"AES-GCM",iv:t.slice(16,28)},m,t.slice(28));try{sessionStorage.setItem(c,e)}catch{}var o=document.createElement("script");o.type="module",o.textContent=new TextDecoder().decode(h)+";window.__rheaFlushReady();",document.body.appendChild(o),d=!0,i.style.display="none"}async function s(e,t){if(d)return!0;try{return await y(e),!0}catch{return t||(a.textContent="That password does not open it."),!1}}var n=(location.hash.match(/[#&]k=([^&]+)/)||[])[1];n&&(n=decodeURIComponent(n),history.replaceState(null,"",location.pathname+location.search));var l=null;try{l=sessionStorage.getItem(c)}catch{}document.getElementById("rhea-lock-form").addEventListener("submit",function(e){e.preventDefault(),a.textContent="Opening...",s(document.getElementById("rhea-lock-pw").value,!1)}),(async function(){var e=n||l;e&&await s(e,!0)||(i.style.display="flex",e&&(a.textContent="That link no longer opens it. Ask for the current one."))})()})();</script>
+<script>(function(){var c="rhea.demo.key",i=document.getElementById("rhea-lock"),a=document.getElementById("rhea-lock-msg"),d=!1,r=[];window.__rheaOnReady=function(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):r.push(e)},window.__rheaFlushReady=function(){var e=r;r=[];for(var t=0;t<e.length;t++)e[t]()};async function y(e){var t=new Uint8Array(await(await fetch("app.bin?v=202611091359")).arrayBuffer()),u=await crypto.subtle.importKey("raw",new TextEncoder().encode(e),"PBKDF2",!1,["deriveKey"]),m=await crypto.subtle.deriveKey({name:"PBKDF2",salt:t.slice(0,16),iterations:25e4,hash:"SHA-256"},u,{name:"AES-GCM",length:256},!1,["decrypt"]),h=await crypto.subtle.decrypt({name:"AES-GCM",iv:t.slice(16,28)},m,t.slice(28));try{sessionStorage.setItem(c,e)}catch{}var o=document.createElement("script");o.type="module",o.textContent=new TextDecoder().decode(h)+";window.__rheaFlushReady();",document.body.appendChild(o),d=!0,i.style.display="none"}async function s(e,t){if(d)return!0;try{return await y(e),!0}catch{return t||(a.textContent="That password does not open it."),!1}}var n=(location.hash.match(/[#&]k=([^&]+)/)||[])[1];n&&(n=decodeURIComponent(n),history.replaceState(null,"",location.pathname+location.search));var l=null;try{l=sessionStorage.getItem(c)}catch{}document.getElementById("rhea-lock-form").addEventListener("submit",function(e){e.preventDefault(),a.textContent="Opening...",s(document.getElementById("rhea-lock-pw").value,!1)}),(async function(){var e=n||l;e&&await s(e,!0)||(i.style.display="flex",e&&(a.textContent="That link no longer opens it. Ask for the current one."))})()})();</script>
  
     
 </body>

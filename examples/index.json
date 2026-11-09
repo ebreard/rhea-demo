@@ -28,5 +28,15 @@
   "listed": true,
   "menu": 106,
   "set": "showcase"
+ },
+ {
+  "index": 609,
+  "id": "Kos_Santorini_TCPDS_1km",
+  "dir": "./examples/Kos_Santorini_TCPDS_1km/",
+  "title": "Kos to Santorini, 161 ka turbidity current, 1 km grid (starts by itself)",
+  "solver": "turbidity",
+  "listed": true,
+  "menu": 119,
+  "set": "showcase"
  }
 ]
