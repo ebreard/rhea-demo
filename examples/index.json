@@ -38,5 +38,15 @@
   "listed": true,
   "menu": 119,
   "set": "showcase"
+ },
+ {
+  "index": 838,
+  "id": "Lava_I_etna_fissures",
+  "dir": "./examples/Lava_I_etna_fissures/",
+  "title": "Etna lava from two fissures, 1 h, Rhea-LavaFlow",
+  "solver": "rhealava",
+  "listed": true,
+  "menu": 10613,
+  "set": "showcase"
  }
 ]

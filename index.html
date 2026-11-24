@@ -44,6 +44,13 @@
         #run_example-select, #case_set-select { max-width: 100%; }
         #run_example-select option { white-space: normal; }
         
+        .menu-note {
+            display: block; margin: 8px 0 0 0; padding: 4px 8px;
+            border-left: 3px solid var(--lava, #b44848);
+            font-size: 0.92em; line-height: 1.35;
+        }
+        .menu-note[hidden] { display: none; }
+        
         html { background: var(--basalt); }
 
         
@@ -111,6 +118,10 @@
         body[data-solver="rheamudflow"] #sediment-container,
         body[data-solver="rheamudflow"] #disturbance-container,
         body[data-solver="rheamudflow"] #incident-wave-block,
+        body[data-solver="rhealava"] #design-container,
+        body[data-solver="rhealava"] #sediment-container,
+        body[data-solver="rhealava"] #disturbance-container,
+        body[data-solver="rhealava"] #incident-wave-block,
         body[data-solver="turbidity"] #design-container,
         body[data-solver="turbidity"] #sediment-container,
         body[data-solver="turbidity"] #disturbance-container,
@@ -120,6 +131,7 @@
         body[data-solver="debris"] #depvis-panel,
         body[data-solver="rheawave"] #depvis-panel,
         body[data-solver="rheaflood"] #depvis-panel,
+        body[data-solver="rhealava"] #depvis-panel,
         body[data-solver="rheamudflow"] #depvis-panel {
             display: none !important;
         }
@@ -503,6 +515,49 @@
 }
 </style>
 <script>
+(function () {
+  // A failure in the page, the code or the graphics device lands in a red box at the foot of the screen, so a phone that
+  // stops working shows why and a screenshot of the box is enough to find the cause.
+  // GPU validation errors are shown only with ?debug in the address: a phone at WebGPU's guaranteed limits raises one
+  // harmless error for the dilute pass the click cases never use, and the box must not cry wolf on a working demo
+  var debug = /[?&]debug(&|=|$)/.test(location.search);
+  var seen = {}, count = 0, lines = [], box = null;
+  function show(t) {
+    t = String(t).slice(0, 300);
+    if (seen[t] || count > 60) { return; }
+    seen[t] = 1; count++;
+    lines.push(t);
+    if (lines.length > 4) { lines.shift(); }
+    if (!box) {
+      box = document.createElement('div');
+      box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:20000;max-height:45%;overflow:auto;padding:8px 12px;'
+        + 'background:#7a2e1a;color:#fff;font:12px/1.35 monospace;white-space:pre-wrap;';
+      box.addEventListener('click', function () { box.style.display = 'none'; });
+      (document.body || document.documentElement).appendChild(box);
+    }
+    box.style.display = 'block';
+    box.textContent = 'Something failed (tap to hide). A screenshot of this box is enough to find the cause:\n' + lines.join('\n');
+  }
+  window.__rheaShow = show;
+  window.addEventListener('error', function (e) {
+    if (/ResizeObserver/.test(e.message || '')) { return; }
+    show((e.message || 'error') + (e.filename ? '  [' + String(e.filename).split('/').pop().slice(0, 40) + ':' + e.lineno + ']' : ''));
+  });
+  window.addEventListener('unhandledrejection', function (e) { show('promise: ' + ((e.reason && e.reason.message) || e.reason)); });
+  var GA = window.GPUAdapter && window.GPUAdapter.prototype;
+  if (GA && GA.requestDevice) {
+    var rd = GA.requestDevice;
+    GA.requestDevice = function () {
+      return rd.apply(this, arguments).then(function (d) {
+        d.addEventListener('uncapturederror', function (ev) { if (debug) { show('GPU: ' + ((ev.error && ev.error.message) || ev.error)); } });
+        d.lost.then(function (i) { if (i.reason !== 'destroyed') { show('GPU device lost (' + i.reason + '): ' + (i.message || '')); } });
+        return d;
+      }, function (err) { show('GPU device request failed: ' + ((err && err.message) || err)); throw err; });
+    };
+  }
+})();
+</script>
+<script>
 document.addEventListener('DOMContentLoaded', async function () {
   var msg = '', note = '';
   try {
@@ -554,7 +609,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 <div>
                     <h1>Rhea<span>-WebGPU</span></h1>
                     <p>Depth-averaged mass flows and waves on the GPU</p>
-                    <p class="masthead-note">Demo: choose a case and press <b>Load and run</b>. At Fuego and in Langtang, tap the map to start a flow. The Kos to Santorini current starts by itself; open Time Series Plots under the map for its deposit at the four drill sites. It runs on this device's graphics chip and needs WebGPU: recent Chrome on Android, Safari on iOS 26 or later, or Chrome and Edge on a computer.</p>
+                    <p class="masthead-note">Demo: choose a case and press <b>Load and run</b>. At Fuego and in Langtang, tap the map to start a flow. The Kos to Santorini current and the Etna lava flow start by themselves; open Time Series Plots under the map for the Kos deposit at the four drill sites. It runs on this device's graphics chip and needs WebGPU: recent Chrome on Android, Safari on iOS 26 or later, or Chrome and Edge on a computer. <span style="opacity:0.6">Build 202611242255.</span></p>
                 </div>
             </div>
             <div id="examples-container" class="custom-window">
@@ -568,6 +623,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                          <select id="solver_mode-select">
                              <option value="pdc">Rhea-PDC (concentrated: dense granular flows)</option>
                             <option value="rheaflood">Rhea-Flood (floods and bulking flows)</option>
+                            <option value="rhealava">Rhea-LavaFlow (lava: viscous, yield stress, cooling)</option>
                             <option value="turbidity">Rhea-Turbidity (submarine currents in seawater)</option>
 </select>
                          <br />
@@ -582,7 +638,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                          <select id="run_example-select" name="run_exampleValue">
                              
                          </select>
-                         <script>(async function(){const d=document.getElementById("solver_mode-select"),i=document.getElementById("run_example-select"),b=await new Promise(function(t){(function e(){window.__rheaExamplesReady?window.__rheaExamplesReady.then(t):setTimeout(e,20)})()}),l=document.getElementById("case_set-select"),y={},E={},r="showcase",m="*",C=b.filter(function(t){return t.listed}).sort(function(t,e){return t.menu-e.menu});for(const t of b)y[t.index]=t.solver,E[t.index]=t.set||r;for(const t of C){const e=document.createElement("option");e.value=String(t.index),e.textContent=t.title,i.appendChild(e)}const h=t=>y[parseInt(t,10)]||"celeris",x=t=>E[parseInt(t,10)]||r;function I(t){const e=[],o={};for(const n of C){if(n.solver!==t)continue;const s=n.set||r;s in o||(o[s]=0,e.push(s)),o[s]+=1}return e.sort(function(n,s){return(n===r?0:1)-(s===r?0:1)}),e.map(function(n){return{name:n,count:o[n]}})}function B(t,e){const o=I(t);l.innerHTML="";for(const n of o){const s=document.createElement("option");s.value=n.name,s.textContent=(n.name===r?"Showcase":n.name)+" ("+n.count+")",l.appendChild(s)}if(o.length>1){const n=document.createElement("option");n.value=m,n.textContent="All cases of this module ("+o.reduce(function(s,f){return s+f.count},0)+")",l.appendChild(n)}l.value=e&&(e===m||o.some(function(n){return n.name===e}))?e:r,l.disabled=o.length<=1}function g(t,e,o){return h(t)===e&&(o===m||x(t)===o)}function S(t,e){let o=null;for(const n of i.options){const s=g(n.value,t,e);n.hidden=!s,n.disabled=!s,s&&o===null&&(o=n.value)}return o}const A={"disturbance-container":"Not used by this solver. It runs the dynamic mass-flow layer, which this control cannot select; choosing one of its sources would switch that layer off."},u=Object.assign({},A,{"incident-wave-block":"Not used by this solver. Wave forcing drives the water solver only, and on ground that never gets wet Rhea skips that solver; choosing a wave type here starts it running again for no physical gain.","design-container":"Not used by this solver. The engineered components act on the water solver, which this mode does not run.","sediment-container":"Not used by this solver. The sediment model rides on the water solver, which this mode does not run."}),T=Object.assign({},u,{"incident-wave-block":"Not used by this solver. The current runs beneath a seawater ambient carried by the mass-flow layer itself, not by the water solver, so wave forcing drives nothing here."}),q={celeris:{},rheawave:A,pdc:u,pdcdilute:u,debris:u,rheamudflow:u,rheaflood:u,turbidity:T},R=["incident-wave-block","design-container","sediment-container","disturbance-container"];function D(t){const e=q[t]||{};for(const o of R){const n=document.getElementById(o);if(!n)continue;const s=n.classList.contains("custom-window"),f=s?n.querySelector(".window-content"):n;if(!f)continue;let c=f.querySelector(":scope > .solver-na-note");const w=s?n.querySelector(".window-header > span"):null;let a=w?w.querySelector(".solver-na-flag"):null;e[o]?(n.classList.add(s?"solver-na":"solver-na-block"),c||(c=document.createElement("div"),c.className="solver-na-note",f.insertBefore(c,f.firstChild)),c.textContent=e[o],c.hidden=!1,w&&!a&&(a=document.createElement("em"),a.className="solver-na-flag",a.textContent=" (not used by this solver)",w.appendChild(a)),a&&(a.hidden=!1)):(n.classList.remove("solver-na","solver-na-block"),c&&(c.hidden=!0),a&&(a.hidden=!0))}}const M={nowater:["pdc","pdcdilute","debris","rheaflood","rheamudflow","turbidity"],dense:["pdc","debris","rheaflood","rheamudflow"],dilute:["pdcdilute","turbidity"]};function O(t,e){return t.split(/\s+/).some(function(o){return o===e||(M[o]||[]).indexOf(e)>=0})}function N(t){for(const e of document.querySelectorAll("[data-hide-in]")){const o=O(e.getAttribute("data-hide-in"),t);e.tagName==="OPTION"?(e.hidden=o,e.disabled=o):e.classList.toggle("mode-off",o)}for(const e of document.querySelectorAll("[data-alt-in]"))e.hasAttribute("data-orig-text")||e.setAttribute("data-orig-text",e.textContent),e.textContent=O(e.getAttribute("data-alt-in"),t)?e.getAttribute("data-alt-text"):e.getAttribute("data-orig-text")}document.addEventListener("DOMContentLoaded",function(){document.body.dataset.solver&&N(document.body.dataset.solver)});let v=!1;function p(t){const e=d.value;D(e),document.body.dataset.solver=e,N(e),typeof window.celerisBuildCasePanel=="function"&&window.celerisBuildCasePanel(e);const o=h(i.value)===e&&!t?x(i.value):r;B(e,o);const n=l.value,s=S(e,n);s!==null&&(t||!g(i.value,e,n))&&(i.value=s,v=!0,i.dispatchEvent(new Event("change")),v=!1)}d.addEventListener("change",function(){p(!0),window.celerisPreviewCase&&h(i.value)===d.value&&window.celerisPreviewCase(i.value)}),l.addEventListener("change",function(){const t=d.value,e=l.value,o=S(t,e);o!==null&&!g(i.value,t,e)&&(i.value=o,v=!0,i.dispatchEvent(new Event("change")),v=!1,window.celerisPreviewCase&&window.celerisPreviewCase(i.value))}),i.addEventListener("change",function(){v||(d.value=h(i.value),p(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value))});const _=function(t){return t!==null&&[...i.options].some(function(e){return e.value===t})},L=new URLSearchParams(window.location.search).get("ex"),P=_(L)?L:"373";_(P)&&(i.value=P),d.value=h(i.value),p(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value)})();</script>
+                         <div id="menu-note" class="menu-note" role="status" hidden></div>
+                         <script>(async function(){const u=document.getElementById("solver_mode-select"),i=document.getElementById("run_example-select"),g=document.getElementById("menu-note"),h=function(t){g&&(g.textContent=t,g.hidden=!t)};window.addEventListener("error",function(t){try{const e=String(t.filename||"");if(window.__rheaStartDone||window.__rheaSolverError||e.indexOf(window.location.origin+"/js/")!==0)return;window.__rheaSolverError=String(t.message||"error"),h("The solver stopped while starting: "+window.__rheaSolverError+" ("+e.split("?")[0].split("/").pop()+", line "+t.lineno+"). Parts of the page may not respond. The browser console (F12) has the details.")}catch{}}),setTimeout(function(){window.__rheaStartDone=!0},3e4);let b;try{const t=await fetch("./examples/index.json",{cache:"no-store"});if(!t.ok)throw new Error("HTTP "+t.status);b=await t.json()}catch(t){h("The case list could not be read (examples/index.json: "+t.message+"). Open the page through a web server, for example python -m http.server 8000 in this folder, then http://localhost:8000/.");return}const a=document.getElementById("case_set-select"),S={},C={},l="showcase",y="*",_=b.filter(function(t){return t.listed}).sort(function(t,e){return t.menu-e.menu});for(const t of b)S[t.index]=t.solver,C[t.index]=t.set||l;for(const t of _){const e=document.createElement("option");e.value=String(t.index),e.textContent=t.title,i.appendChild(e)}const w=t=>S[parseInt(t,10)]||"celeris",x=t=>C[parseInt(t,10)]||l;function D(t){const e=[],o={};for(const n of _){if(n.solver!==t)continue;const s=n.set||l;s in o||(o[s]=0,e.push(s)),o[s]+=1}return e.sort(function(n,s){return(n===l?0:1)-(s===l?0:1)}),e.map(function(n){return{name:n,count:o[n]}})}function q(t,e){const o=D(t);a.innerHTML="";for(const n of o){const s=document.createElement("option");s.value=n.name,s.textContent=(n.name===l?"Showcase":n.name)+" ("+n.count+")",a.appendChild(s)}if(o.length>1){const n=document.createElement("option");n.value=y,n.textContent="All cases of this module ("+o.reduce(function(s,f){return s+f.count},0)+")",a.appendChild(n)}a.value=e&&(e===y||o.some(function(n){return n.name===e}))?e:l,a.disabled=o.length<=1}function E(t,e,o){return w(t)===e&&(o===y||x(t)===o)}function A(t,e){let o=null;for(const n of i.options){const s=E(n.value,t,e);n.hidden=!s,n.disabled=!s,s&&o===null&&(o=n.value)}return o}const O={"disturbance-container":"Not used by this solver. It runs the dynamic mass-flow layer, which this control cannot select; choosing one of its sources would switch that layer off."},d=Object.assign({},O,{"incident-wave-block":"Not used by this solver. Wave forcing drives the water solver only, and on ground that never gets wet Rhea skips that solver; choosing a wave type here starts it running again for no physical gain.","design-container":"Not used by this solver. The engineered components act on the water solver, which this mode does not run.","sediment-container":"Not used by this solver. The sediment model rides on the water solver, which this mode does not run."}),R=Object.assign({},d,{"incident-wave-block":"Not used by this solver. The current runs beneath a seawater ambient carried by the mass-flow layer itself, not by the water solver, so wave forcing drives nothing here."}),j={celeris:{},rheawave:O,pdc:d,pdcdilute:d,debris:d,rheamudflow:d,rheaflood:d,rhealava:d,turbidity:R},k=["incident-wave-block","design-container","sediment-container","disturbance-container"];function M(t){const e=j[t]||{};for(const o of k){const n=document.getElementById(o);if(!n)continue;const s=n.classList.contains("custom-window"),f=s?n.querySelector(".window-content"):n;if(!f)continue;let c=f.querySelector(":scope > .solver-na-note");const p=s?n.querySelector(".window-header > span"):null;let r=p?p.querySelector(".solver-na-flag"):null;e[o]?(n.classList.add(s?"solver-na":"solver-na-block"),c||(c=document.createElement("div"),c.className="solver-na-note",f.insertBefore(c,f.firstChild)),c.textContent=e[o],c.hidden=!1,p&&!r&&(r=document.createElement("em"),r.className="solver-na-flag",r.textContent=" (not used by this solver)",p.appendChild(r)),r&&(r.hidden=!1)):(n.classList.remove("solver-na","solver-na-block"),c&&(c.hidden=!0),r&&(r.hidden=!0))}}const F={nowater:["pdc","pdcdilute","debris","rheaflood","rheamudflow","rhealava","turbidity"],dense:["pdc","debris","rheaflood","rheamudflow","rhealava"],dilute:["pdcdilute","turbidity"]};function P(t,e){return t.split(/\s+/).some(function(o){return o===e||(F[o]||[]).indexOf(e)>=0})}function N(t){for(const e of document.querySelectorAll("[data-hide-in]")){const o=P(e.getAttribute("data-hide-in"),t);e.tagName==="OPTION"?(e.hidden=o,e.disabled=o):e.classList.toggle("mode-off",o)}for(const e of document.querySelectorAll("[data-alt-in]"))e.hasAttribute("data-orig-text")||e.setAttribute("data-orig-text",e.textContent),e.textContent=P(e.getAttribute("data-alt-in"),t)?e.getAttribute("data-alt-text"):e.getAttribute("data-orig-text")}document.addEventListener("DOMContentLoaded",function(){document.body.dataset.solver&&N(document.body.dataset.solver)});let v=!1;function m(t){const e=u.value;M(e),document.body.dataset.solver=e,N(e),typeof window.celerisBuildCasePanel=="function"&&window.celerisBuildCasePanel(e);const o=w(i.value)===e&&!t?x(i.value):l;q(e,o);const n=a.value,s=A(e,n);s!==null&&(t||!E(i.value,e,n))&&(i.value=s,v=!0,i.dispatchEvent(new Event("change")),v=!1)}u.addEventListener("change",function(){m(!0),window.celerisPreviewCase&&w(i.value)===u.value&&window.celerisPreviewCase(i.value)}),a.addEventListener("change",function(){const t=u.value,e=a.value,o=A(t,e);o!==null&&!E(i.value,t,e)&&(i.value=o,v=!0,i.dispatchEvent(new Event("change")),v=!1,window.celerisPreviewCase&&window.celerisPreviewCase(i.value))}),i.addEventListener("change",function(){v||(u.value=w(i.value),m(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value))});const T=function(t){return t!==null&&[...i.options].some(function(e){return e.value===t})},L=new URLSearchParams(window.location.search).get("ex"),I=T(L)?L:"373";T(I)&&(i.value=I),u.value=w(i.value),m(!1),window.celerisPreviewCase&&window.celerisPreviewCase(i.value);const B=function(){return typeof window.celerisBuildCasePanel=="function"&&typeof window.celerisPreviewCase=="function"};if(!B()){const t=Date.now();(function e(){if(B()){m(!1),window.celerisPreviewCase(i.value),window.__rheaSolverError||h("");return}window.__rheaSolverError||(window.__rheaSolverFailed?h("The solver code did not load, so no case can run. Reload the page with Ctrl+Shift+R. If it stays like this, the browser console (F12) names the file that failed."):Date.now()-t>1e4&&h("Still loading the solver code. The cases above can be chosen now and will run once it has loaded.")),setTimeout(e,50)})()}})();</script>
                 </div>
             </div>
 
@@ -1898,9 +1955,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <br />
 
                     
-                    <label for="slide_rest_gate-input">Landslide rest-state mass-flux gate (1 = on, holds static piles exactly; 0 = off, plain central-upwind everywhere) [default 1]:</label>
+                    <label for="slide_rest_gate-input">Landslide rest-state mass-flux gate (1 = on, holds static piles exactly; 0 = off, plain central-upwind everywhere; 2 = IMEX gate, off unless both face velocities are exactly zero) [default 1]:</label>
                     <br />
-                    <input type="number" id="slide_rest_gate-input" name="slide_rest_gateValue" min="0" max="1" step="1">
+                    <input type="number" id="slide_rest_gate-input" name="slide_rest_gateValue" min="0" max="2" step="1">
                     <button id="slide_rest_gate-button" type="button">Update</button>
                     <br />
                     <br />
@@ -2012,9 +2069,10 @@ document.addEventListener('DOMContentLoaded', async function () {
             <span style="font-family: Cinzel, 'Space Grotesk', serif; font-weight: 600; font-size: 1.25em; letter-spacing: 0.06em;">Rhea-WebGPU</span> v1.0.0-beta: interactive GPU solver for concentrated and dilute pyroclastic density currents/turbidity currents, mudflows and lahars, floods, debris flows and landslides<br>
             <span style="font-style: italic; opacity: 0.85;">πάντα ῥεῖ (everything flows)</span><br>
             E.C.P. Breard, University of Edinburgh &middot; Rhea funded by UKRI-NERC-IRF and the Leverhulme Trust<br>
-            Copyright &copy; 2026 E. C. P. Breard &middot; Rhea-WebGPU additions, MIT licensed<br>
+            Copyright &copy; 2026 E. C. P. Breard &middot; Rhea-WebGPU additions, GNU GPL v3 or later with additional terms<br>
+            This program comes with ABSOLUTELY NO WARRANTY. It is free software: you may redistribute it under the terms of the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU General Public License</a>, version 3 or later, and the additional terms in <a href="NOTICE" target="_blank" rel="noopener">NOTICE</a> (full text: <a href="LICENSE" target="_blank" rel="noopener">LICENSE</a>). A modified version must keep these notices and be marked as modified.<br>
             <br>
-            Built on Celeris-WebGPU v.2025.01.21<br>
+            Built on Celeris-WebGPU v.2025.01.21 (MIT License)<br>
             Copyright Patrick Lynett 2024<br>
             Developed with support from USACE ERDC, ONR, and the NSF<br>
             <br />
@@ -2115,25 +2173,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     </div>
 
     
-    
-    
-
-    
-
-    
-
-    
-
-    
-
-
-        
-    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
-
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    
     <div id="rhea-lock" style="position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(8,14,20,0.94);font:15px sans-serif;color:#eee;">
 <form id="rhea-lock-form" style="max-width:320px;width:90%;background:#1b2a3a;border:1px solid #3a5a7a;border-radius:8px;padding:18px;">
 <div style="font-weight:600;font-size:17px;margin-bottom:6px;">Rhea-WebGPU demo</div>
@@ -2143,7 +2182,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 <div id="rhea-lock-msg" style="margin-top:8px;color:#f0a080;min-height:1.2em;"></div>
 </form>
 </div>
-<script>(function(){var c="rhea.demo.key",i=document.getElementById("rhea-lock"),a=document.getElementById("rhea-lock-msg"),d=!1,r=[];window.__rheaOnReady=function(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):r.push(e)},window.__rheaFlushReady=function(){var e=r;r=[];for(var t=0;t<e.length;t++)e[t]()};async function y(e){var t=new Uint8Array(await(await fetch("app.bin?v=202611091359")).arrayBuffer()),u=await crypto.subtle.importKey("raw",new TextEncoder().encode(e),"PBKDF2",!1,["deriveKey"]),m=await crypto.subtle.deriveKey({name:"PBKDF2",salt:t.slice(0,16),iterations:25e4,hash:"SHA-256"},u,{name:"AES-GCM",length:256},!1,["decrypt"]),h=await crypto.subtle.decrypt({name:"AES-GCM",iv:t.slice(16,28)},m,t.slice(28));try{sessionStorage.setItem(c,e)}catch{}var o=document.createElement("script");o.type="module",o.textContent=new TextDecoder().decode(h)+";window.__rheaFlushReady();",document.body.appendChild(o),d=!0,i.style.display="none"}async function s(e,t){if(d)return!0;try{return await y(e),!0}catch{return t||(a.textContent="That password does not open it."),!1}}var n=(location.hash.match(/[#&]k=([^&]+)/)||[])[1];n&&(n=decodeURIComponent(n),history.replaceState(null,"",location.pathname+location.search));var l=null;try{l=sessionStorage.getItem(c)}catch{}document.getElementById("rhea-lock-form").addEventListener("submit",function(e){e.preventDefault(),a.textContent="Opening...",s(document.getElementById("rhea-lock-pw").value,!1)}),(async function(){var e=n||l;e&&await s(e,!0)||(i.style.display="flex",e&&(a.textContent="That link no longer opens it. Ask for the current one."))})()})();</script>
+<script>(function(){var d="rhea.demo.key",l=document.getElementById("rhea-lock"),r=document.getElementById("rhea-lock-msg"),c=!1,o=[];window.__rheaOnReady=function(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):o.push(e)},window.__rheaFlushReady=function(){var e=o;o=[];for(var a=0;a<e.length;a++)e[a]()};var s="";async function m(e){var a=await fetch("app.bin?v=202611242255");if(!a.ok)throw new Error("the model file did not download, HTTP "+a.status);var t=new Uint8Array(await a.arrayBuffer()),y=await crypto.subtle.importKey("raw",new TextEncoder().encode(e),"PBKDF2",!1,["deriveKey"]),p=await crypto.subtle.deriveKey({name:"PBKDF2",salt:t.slice(0,16),iterations:25e4,hash:"SHA-256"},y,{name:"AES-GCM",length:256},!1,["decrypt"]),f=await crypto.subtle.decrypt({name:"AES-GCM",iv:t.slice(16,28)},p,t.slice(28));try{sessionStorage.setItem(d,e)}catch{}var i=document.createElement("script");i.type="module",i.textContent=new TextDecoder().decode(f)+";window.__rheaFlushReady();",document.body.appendChild(i),c=!0,l.style.display="none"}async function u(e,a){if(c)return!0;try{return await m(e),!0}catch(t){return s=t&&t.name==="OperationError"?"":"It could not start ("+(t&&t.name||"error")+": "+(t&&t.message||t)+"). Reload the page. If it repeats, send a screenshot of this box.",a||(r.textContent=s||"That password does not open it."),!1}}var n=(location.hash.match(/[#&]k=([^&]+)/)||[])[1];n&&(n=decodeURIComponent(n),history.replaceState(null,"",location.pathname+location.search));var h=null;try{h=sessionStorage.getItem(d)}catch{}document.getElementById("rhea-lock-form").addEventListener("submit",function(e){e.preventDefault(),r.textContent="Opening...",u(document.getElementById("rhea-lock-pw").value,!1)}),(async function(){var e=n||h;e&&await u(e,!0)||(l.style.display="flex",e&&(r.textContent=s||"That link no longer opens it. Ask for the current one."))})()})();</script>
  
     
 </body>
